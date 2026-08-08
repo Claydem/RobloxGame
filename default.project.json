@@ -1,0 +1,30 @@
+{
+  "name": "BrainrotGame",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Modules": {
+        "$path": "src/ReplicatedStorage/Modules"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "InitServer": {
+        "$path": "src/ServerScriptService/InitServer.server.lua"
+      },
+      "Modules": {
+        "$path": "src/ServerScriptService/Modules"
+      }
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "MainGui": {
+        "$path": "src/StarterGui/MainGui"
+      },
+      "BattleGui": {
+        "$path": "src/StarterGui/BattleGui"
+      }
+    }
+  }
+}

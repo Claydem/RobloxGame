@@ -1,0 +1,10 @@
+﻿# Roblox & Development
+*.rbxlx.lock
+*.rbxl.lock
+.rojo/
+rojo.exe
+
+# OS & Logs
+*.log
+.DS_Store
+Thumbs.db
