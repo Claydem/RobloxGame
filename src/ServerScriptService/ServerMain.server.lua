@@ -2,14 +2,19 @@
 	ServerMain.server.lua
 	ServerScriptService.ServerMain
 
-	Головний серверний скрипт ініціалізації:
-	Автоматично завантажує та запускає всі серверні модулі та ремоути гри.
+	Єдиний точка входу сервера:
+	- Створює структуру ремоутів в ReplicatedStorage.Events
+	- Завантажує серверні модулі в правильному порядку
+	- (Автор: Brainrot Game Team)
 --]]
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Create Remote Events & Remote Functions folder if missing
+-- ═══════════════════════════════════════════════════════
+--  REMOTES SETUP
+-- ═══════════════════════════════════════════════════════
+
 local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
 if not eventsFolder then
 	eventsFolder = Instance.new("Folder")
@@ -17,48 +22,78 @@ if not eventsFolder then
 	eventsFolder.Parent = ReplicatedStorage
 end
 
-local function ensureRemoteFunction(name)
-	local rf = eventsFolder:FindFirstChild(name)
-	if not rf then
-		rf = Instance.new("RemoteFunction")
-		rf.Name = name
-		rf.Parent = eventsFolder
+local function ensureRemote(className, name)
+	local r = eventsFolder:FindFirstChild(name)
+	if r then
+		if r.ClassName == className then return r end
+		-- Wrong class exists — replace
+		r:Destroy()
 	end
-	return rf
+	r = Instance.new(className)
+	r.Name = name
+	r.Parent = eventsFolder
+	return r
 end
 
-local function ensureRemoteEvent(name)
-	local re = eventsFolder:FindFirstChild(name)
-	if not re then
-		re = Instance.new("RemoteEvent")
-		re.Name = name
-		re.Parent = eventsFolder
-	end
-	return re
-end
+local function ensureRemoteFunction(name) return ensureRemote("RemoteFunction", name) end
+local function ensureRemoteEvent(name)    return ensureRemote("RemoteEvent", name)    end
 
+-- Gacha
 ensureRemoteFunction("OpenCase")
+ensureRemoteEvent("CaseAnimationFinished")
+
+-- Data / Inventory
 ensureRemoteFunction("GetPlayerData")
-ensureRemoteFunction("StartBattle")
-ensureRemoteFunction("BuyShopItem")
-ensureRemoteFunction("UseConsumable")
 ensureRemoteEvent("InventoryUpdate")
 ensureRemoteEvent("ConsumablesUpdate")
 ensureRemoteEvent("BuffStateUpdate")
+ensureRemoteEvent("FeedPet")
 ensureRemoteEvent("ToggleEquipPet")
-ensureRemoteEvent("CaseAnimationFinished")
+
+-- Shop
+ensureRemoteFunction("BuyShopItem")
+ensureRemoteFunction("UseShopItem")
+
+-- Battle (повний набір)
+ensureRemoteFunction("StartBattle")
+ensureRemoteEvent("QTEResult")
+ensureRemoteEvent("BattlePhaseUpdate")
+ensureRemoteEvent("BattleEnd")
+ensureRemoteEvent("BattleStateUpdate")
+ensureRemoteEvent("SubmitBattleTurn") -- legacy stub
 
 print("[ServerMain] 🚀 Booting Brainrot Tycoon Server Modules...")
 
+-- ═══════════════════════════════════════════════════════
+--  LOAD MODULES (порядок має значення!)
+-- ═══════════════════════════════════════════════════════
 local modulesFolder = ServerScriptService:WaitForChild("Modules", 10)
-if modulesFolder then
-	require(modulesFolder:WaitForChild("DataManager"))
-	require(modulesFolder:WaitForChild("MapManager"))
-	require(modulesFolder:WaitForChild("PetService"))
-	require(modulesFolder:WaitForChild("GachaService"))
-	require(modulesFolder:WaitForChild("BattleService"))
-	require(modulesFolder:WaitForChild("TeleportService"))
-	require(modulesFolder:WaitForChild("ShopService"))
-
-	print("[ServerMain] ✅ All 7 Server Services successfully initialized and running!")
+if not modulesFolder then
+	error("[ServerMain] ❌ Папка Modules не знайдена!")
 end
+
+local function safeRequire(name)
+	local child = modulesFolder:FindFirstChild(name)
+	if not child then
+		warn("[ServerMain] ❌ Модуль " .. name .. " не знайдено!")
+		return nil
+	end
+	local ok, mod = pcall(require, child)
+	if not ok then
+		warn("[ServerMain] ❌ Помилка завантаження модуля " .. name .. ": " .. tostring(mod))
+		return nil
+	end
+	print("[ServerMain] ✅ Завантажено модуль: " .. name)
+	return mod
+end
+
+-- DataManager і MapManager мають ініціалізуватися першими
+safeRequire("DataManager")
+safeRequire("MapManager")
+safeRequire("PetService")
+safeRequire("GachaService")
+safeRequire("ShopService")
+safeRequire("BattleService")
+safeRequire("TeleportService")
+
+print("[ServerMain] ✅ All 7 Server Services successfully initialized and running!")

@@ -1019,24 +1019,10 @@ task.spawn(function()
 		end
 	end)
 
-	btnSubmitTurn.MouseButton1Click:Connect(function()
-		if not selectedAttackZone or not selectedDefenseZone or not SubmitTurnEvent then return end
-		SubmitTurnEvent:FireServer(selectedAttackZone, selectedDefenseZone)
-	end)
-
-	if BattleStateUpdate then
-		BattleStateUpdate.OnClientEvent:Connect(function(session)
-			p1HPLabel.Text = string.format("%s: %d/%d HP", session.P1_Name or "?", session.P1_HP or 0, session.P1_MaxHP or 0)
-			p2HPLabel.Text = string.format("%s: %d/%d HP", session.P2_Name or "?", session.P2_HP or 0, session.P2_MaxHP or 0)
-			battleLogLabel.Text = session.LastLog or ""
-
-			if session.Status ~= "InProgress" then
-				task.delay(3.5, function()
-					arenaSubFrame.Visible = false
-					lobbySubFrame.Visible = true
-				end)
-			end
-		end)
+	-- [legacy] Стара арена у MainGui вимкнена — бої обробляються через BattleController.client.lua.
+	-- SubmitTurnEvent та BattleStateUpdate тут більше не використовуються (залишені для сумісності).
+	do
+		-- (empty: combat input handled by BattleGui/BattleController)
 	end
 
 	-- Повертаємо меню після завершення бою

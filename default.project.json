@@ -10,8 +10,8 @@
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "InitServer": {
-        "$path": "src/ServerScriptService/InitServer.server.lua"
+      "ServerMain": {
+        "$path": "src/ServerScriptService/ServerMain.server.lua"
       },
       "Modules": {
         "$path": "src/ServerScriptService/Modules"

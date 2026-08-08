@@ -23,6 +23,22 @@ local Events     = ReplicatedStorage:WaitForChild("Events", 10)
 local ModFolder  = ReplicatedStorage:WaitForChild("Modules", 10)
 local ItemDB     = ModFolder and ModFolder:FindFirstChild("ItemDatabase") and require(ModFolder.ItemDatabase)
 
+-- Допоміжна функція очікування ремоутів
+local function waitEvent(name, className, timeout)
+	local t = timeout or 10
+	local ev = Events:FindFirstChild(name)
+	while not ev and t > 0 do
+		task.wait(0.2); t = t - 0.2
+		ev = Events:FindFirstChild(name)
+	end
+	if ev and (not className or ev.ClassName == className) then return ev end
+	return nil
+end
+
+local QTEResultEvent        = waitEvent("QTEResult", "RemoteEvent")
+local BattlePhaseUpdateEvent= waitEvent("BattlePhaseUpdate", "RemoteEvent")
+local BattleEndEvent        = waitEvent("BattleEnd", "RemoteEvent")
+
 local screenGuiAncestor = script:FindFirstAncestorOfClass("ScreenGui")
 if not screenGuiAncestor then
 	local found = PlayerGui:FindFirstChild("BattleGui")
@@ -793,7 +809,7 @@ local function startAttackFlow(data)
 				if not dataSent then
 					dataSent = true
 					if Events then
-						Events.QTEResult:FireServer("Attack", {
+						QTEResultEvent:FireServer("Attack", {
 							zone = selectedZone,
 							mashCount = mashCount,
 							precisionHit = precisionHit,
@@ -892,7 +908,7 @@ local function startDefendFlow(data)
 			if not dataSent then
 				dataSent = true
 				if Events then
-					Events.QTEResult:FireServer("Defend", {
+					QTEResultEvent:FireServer("Defend", {
 						zone = selectedZone,
 						success = defenseSuccess,
 					})
@@ -925,7 +941,7 @@ end)
 -- ═══════════════════════════════════════════════════════
 
 if Events then
-	Events.BattlePhaseUpdate.OnClientEvent:Connect(function(data)
+	BattlePhaseUpdateEvent.OnClientEvent:Connect(function(data)
 		if not data or not data.Phase then return end
 		battleGui.Enabled = true
 		mySide = data.YourSide or "P1"
@@ -1065,7 +1081,7 @@ if Events then
 		end
 	end)
 
-	Events.BattleEnd.OnClientEvent:Connect(function(data)
+	BattleEndEvent.OnClientEvent:Connect(function(data)
 		hideAllPanels()
 		stopBattleBGM()
 		resultOverlay.Visible = true
