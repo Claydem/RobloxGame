@@ -159,6 +159,49 @@ end
 local function runHalfTurn(session)
 	if session.Status ~= "InProgress" then return end
 
+	-- ──── BURN DOT (Lava class) ────────────────────────
+	if session._pendingBurnDmg and session._pendingBurnDmg > 0 and session._pendingBurnTarget then
+		local burnTarget = getActiveUnit(session, session._pendingBurnTarget)
+		if burnTarget and burnTarget.HP > 0 then
+			local burnDmg = session._pendingBurnDmg
+			burnTarget.HP = math.max(0, burnTarget.HP - burnDmg)
+			sendPhase(session, "BurnDot", {
+				BurnTarget = session._pendingBurnTarget,
+				BurnDamage = burnDmg,
+				TargetName = burnTarget.Name,
+				TargetHP = burnTarget.HP,
+				TargetMaxHP = burnTarget.MaxHP,
+			})
+			task.wait(1)
+			-- Check if burn killed the unit
+			if burnTarget.HP <= 0 then
+				local burnSide = session._pendingBurnTarget
+				local burnTeam = session[burnSide .. "_Team"]
+				local burnIdx = session[burnSide .. "_ActiveIdx"]
+				local nextIdx = nil
+				for i = burnIdx + 1, #burnTeam do
+					if burnTeam[i].HP > 0 then nextIdx = i; break end
+				end
+				if nextIdx then
+					session[burnSide .. "_ActiveIdx"] = nextIdx
+					swapModel(session, burnSide)
+					sendPhase(session, "UnitSwap", {
+						SwapSide = burnSide,
+						DeadName = burnTarget.Name,
+						NewUnit = burnTeam[nextIdx].Name,
+					})
+					task.wait(2)
+				else
+					local otherSide = burnSide == "P1" and "P2" or "P1"
+					session.Status = otherSide .. "_Won"
+				end
+			end
+		end
+		session._pendingBurnDmg = 0
+		session._pendingBurnTarget = nil
+	end
+	if session.Status ~= "InProgress" then return end
+
 	local atkSide = session.CurrentAttacker
 	local defSide = (atkSide == "P1") and "P2" or "P1"
 	local atkPlayer = session[atkSide .. "_Player"]
@@ -228,14 +271,38 @@ local function runHalfTurn(session)
 	session._defZone = session._defZone or ZONES[math.random(1, 3)]
 
 	-- ──── DAMAGE CALCULATION ──────────────────────────
+	local atkAbility = atkUnit.ClassAbility or "None"
+	local healAmt = 0
+	local burnApplied = false
+	local glitchApplied = false
+
 	local powerMult     = math.clamp(1.0 + (session._mashCount / 40), 1.0, 2.0)
 	local precisionMult = session._precHit and 1.5 or 1.0
 	local rawDmg        = math.floor(atkUnit.Damage * powerMult * precisionMult)
-	local isCrit        = session._precHit and (math.random() < 0.25)
-	if isCrit then rawDmg = math.floor(rawDmg * 1.5) end
+	
+	local critChance = 0.25
+	local critMult = 1.5
+	if atkUnit.ClassAbility == "CritBoost" then
+		critChance = 0.50
+		critMult = 1.75
+	end
+	local isCrit = session._precHit and (math.random() < critChance)
+	if isCrit then rawDmg = math.floor(rawDmg * critMult) end
 
 	local finalDmg    = rawDmg
 	local blockResult = "MISS" -- зони не співпали
+
+	-- Hacker: Glitch — 20% chance to downgrade enemy block
+	if atkAbility == "Glitch" and session._atkZone == session._defZone then
+		if math.random() < 0.20 then
+			if session._defSuccess then
+				session._defSuccess = false -- Perfect Block → Partial Block
+			else
+				session._defZone = nil -- Partial Block → Miss
+			end
+			glitchApplied = true
+		end
+	end
 
 	if session._atkZone == session._defZone then
 		if session._defSuccess then
@@ -256,6 +323,20 @@ local function runHalfTurn(session)
 
 	defUnit.HP = math.max(0, defUnit.HP - finalDmg)
 
+	-- ──── CLASS ABILITIES ────────────────────────────
+	-- Diamante: Vampirism — heal 20% of damage dealt
+	if atkAbility == "Vampirism" and finalDmg > 0 then
+		healAmt = math.floor(finalDmg * 0.20)
+		atkUnit.HP = math.min(atkUnit.MaxHP, atkUnit.HP + healAmt)
+	end
+
+	-- Lava: Burn DoT — 15% of damage dealt applied next turn
+	if atkAbility == "Burn" and finalDmg > 0 then
+		session._pendingBurnDmg = math.floor(finalDmg * 0.15)
+		session._pendingBurnTarget = defSide
+		burnApplied = true
+	end
+
 	-- ──── PHASE: RESOLUTION ───────────────────────────
 	sendPhase(session, "Resolution", {
 		AttackZone  = session._atkZone,
@@ -265,6 +346,11 @@ local function runHalfTurn(session)
 		IsCrit      = isCrit,
 		CounterDmg  = counterDmg,
 		PowerMult   = powerMult,
+		HealAmount  = healAmt,
+		BurnApplied = burnApplied,
+		GlitchApplied = glitchApplied,
+		AtkClassAbility = atkAbility,
+		AtkClassIcon = atkUnit.ClassAbilityIcon or "",
 	})
 
 	task.wait(2.5)
@@ -352,6 +438,18 @@ local function runBattle(session)
 		resultData.Reward = WIN_REWARD
 		if session.Player1 then DM.AddBrainCells(session.Player1, WIN_REWARD) end
 
+		-- Oro: Double Reward
+		local hasOro = false
+		if session.P1_Team then
+			for _, u in ipairs(session.P1_Team) do
+				if u.ClassAbility == "DoubleReward" then hasOro = true; break end
+			end
+		end
+		if hasOro then
+			if session.Player1 then DM.AddBrainCells(session.Player1, WIN_REWARD) end -- Extra reward
+			resultData.OroBonus = WIN_REWARD
+		end
+
 		-- XP Awarding Logic
 		if session.Player1 then
 			local totalBotLevel = 0
@@ -387,6 +485,18 @@ local function runBattle(session)
 		resultData.Reward = WIN_REWARD
 		if session.Player2 then DM.AddBrainCells(session.Player2, WIN_REWARD) end
 		
+		-- Oro: Double Reward
+		local hasOro = false
+		if session.P2_Team then
+			for _, u in ipairs(session.P2_Team) do
+				if u.ClassAbility == "DoubleReward" then hasOro = true; break end
+			end
+		end
+		if hasOro then
+			if session.Player2 then DM.AddBrainCells(session.Player2, WIN_REWARD) end -- Extra reward
+			resultData.OroBonus = WIN_REWARD
+		end
+
 		-- XP Awarding Logic for P2 (Bot)
 		if session.Player2 then
 			local totalP1Level = 0
@@ -473,6 +583,8 @@ local function buildTeam(player, teamUUIDs)
 						ItemId = inv.ItemId,
 						Name   = stats.Name,
 						Class  = stats.Class,
+						ClassAbility = stats.ClassConfig and stats.ClassConfig.Ability or "None",
+						ClassAbilityIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or "",
 						Level  = stats.Level,
 						XP     = stats.XP,
 						HP     = stats.MaxHP,
@@ -509,6 +621,8 @@ local function buildBotTeam(player)
 					ItemId = id,
 					Name   = stats.Name .. " (" .. botClass .. ")",
 					Class  = botClass,
+					ClassAbility = stats.ClassConfig and stats.ClassConfig.Ability or "None",
+					ClassAbilityIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or "",
 					Level  = botLevel,
 					HP     = math.floor(stats.MaxHP * 0.9),
 					MaxHP  = math.floor(stats.MaxHP * 0.9),
@@ -521,6 +635,7 @@ local function buildBotTeam(player)
 		table.insert(team, {
 			UUID = "bot", ItemId = "brainrot_67",
 			Name = "Bot Brainrot", Class = "Normal", Level = 1, HP = 120, MaxHP = 120, Damage = 12,
+			ClassAbility = "None", ClassAbilityIcon = "",
 		})
 	end
 	return team
@@ -596,16 +711,16 @@ function BattleService.StartPvPBattle(p1, p2)
 	if d1 and d1.Inventory then
 		for _, u in ipairs(d1.Inventory) do
 			if u.Equipped and #t1 < 3 then
-				local cfg = ItemDatabase.GetItem(u.ItemId)
-				if cfg then table.insert(t1, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+				local cfg = ItemDatabase.GetUnitStats(u)
+				if cfg then table.insert(t1, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
 			end
 		end
 	end
 	if d2 and d2.Inventory then
 		for _, u in ipairs(d2.Inventory) do
 			if u.Equipped and #t2 < 3 then
-				local cfg = ItemDatabase.GetItem(u.ItemId)
-				if cfg then table.insert(t2, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+				local cfg = ItemDatabase.GetUnitStats(u)
+				if cfg then table.insert(t2, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
 			end
 		end
 	end

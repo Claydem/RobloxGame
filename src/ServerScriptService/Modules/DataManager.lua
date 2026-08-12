@@ -268,5 +268,17 @@ game:BindToClose(function()
 	end
 end)
 
+task.delay(1, function()
+	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+	if eventsFolder then
+		local getPlayerDataRF = eventsFolder:FindFirstChild("GetPlayerData")
+		if getPlayerDataRF and getPlayerDataRF:IsA("RemoteFunction") then
+			getPlayerDataRF.OnServerInvoke = function(player)
+				return DataManager.GetPlayerData(player)
+			end
+		end
+	end
+end)
+
 _G.DataManager = DataManager
 return DataManager

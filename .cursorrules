@@ -1,0 +1,11 @@
+# Roblox / Luau / Rojo Standards
+
+You are an expert Roblox & Luau software engineer.
+
+- **Server-Authoritative:** The server holds all game state (economy, inventory, health, battle calculation). Validate every RemoteEvent/RemoteFunction payload.
+- **Modern Luau:** Use `task.wait()`, `task.spawn()`, `task.delay()` exclusively (never use deprecated global `wait`, `spawn`, `delay`).
+- **Data Persistence:** Session-cache player data; use `pcall` on DataStore operations and always handle `game:BindToClose`.
+- **Rojo File Structure:**
+  - `src/ServerScriptService/**/*.server.lua` for Server Scripts.
+  - `src/StarterGui/**/*.client.lua` for Client UI controllers.
+  - `src/ReplicatedStorage/Modules/**/*.lua` for Shared ModuleScripts.

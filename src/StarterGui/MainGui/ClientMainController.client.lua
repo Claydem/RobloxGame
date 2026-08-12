@@ -484,11 +484,12 @@ task.spawn(function()
 			local progressPct = math.clamp(xp / math.max(1, maxXP), 0, 1)
 
 			local card = Instance.new("Frame")
-			card.Size = UDim2.new(1, -8, 0, 92)
+			card.Size = UDim2.new(1, -8, 0, 100)
 			card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
 			card.Parent = petScroll
 			createCorner(card, 10)
-			createStroke(card, stats.Color or Color3.fromRGB(60, 65, 80), 1)
+			local rarityColor = stats.RarityConfig and stats.RarityConfig.Color or Color3.fromRGB(60, 65, 80)
+			createStroke(card, rarityColor, 1)
 
 			-- 3D Viewport Preview
 			local viewport = Instance.new("ViewportFrame")
@@ -532,9 +533,11 @@ task.spawn(function()
 			title.Size = UDim2.new(0, 320, 0, 22)
 			title.Position = UDim2.new(0, 92, 0, 8)
 			title.BackgroundTransparency = 1
+			local rarityIcon = stats.RarityConfig and stats.RarityConfig.Icon or "⚪"
+			local classIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or ""
 			local classTag = string.format(" [%s]", (stats.Class or unit.Class or "Normal"):upper())
-			title.Text = (stats.Name or unit.ItemId) .. classTag .. (unit.Equipped and " ✅" or "")
-			title.TextColor3 = stats.Color or Color3.fromRGB(255, 255, 255)
+			title.Text = rarityIcon .. " " .. (stats.Name or unit.ItemId) .. classTag .. " " .. classIcon .. (unit.Equipped and " ✅" or "")
+			title.TextColor3 = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(255, 255, 255)
 			title.TextSize = 13
 			title.Font = Enum.Font.GothamBold
 			title.TextXAlignment = Enum.TextXAlignment.Left
@@ -552,10 +555,24 @@ task.spawn(function()
 			statsLbl.TextXAlignment = Enum.TextXAlignment.Left
 			statsLbl.Parent = card
 
+			-- Class Perk label
+			local perkLbl = Instance.new("TextLabel")
+			perkLbl.Size = UDim2.new(0, 350, 0, 14)
+			perkLbl.Position = UDim2.new(0, 92, 0, 48)
+			perkLbl.BackgroundTransparency = 1
+			local perkText = stats.ClassConfig and stats.ClassConfig.Perk or "Standard fighter"
+			perkLbl.Text = (stats.ClassConfig and stats.ClassConfig.AbilityIcon or "") .. " " .. perkText
+			perkLbl.TextColor3 = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(150, 150, 170)
+			perkLbl.TextSize = 8
+			perkLbl.Font = Enum.Font.Gotham
+			perkLbl.TextXAlignment = Enum.TextXAlignment.Left
+			perkLbl.TextTruncate = Enum.TextTruncate.AtEnd
+			perkLbl.Parent = card
+
 			-- 📊 XP Progress Bar (Visual Track + Fill)
 			local xpTrack = Instance.new("Frame")
 			xpTrack.Size = UDim2.new(0, 280, 0, 18)
-			xpTrack.Position = UDim2.new(0, 92, 0, 58)
+			xpTrack.Position = UDim2.new(0, 92, 0, 66)
 			xpTrack.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
 			xpTrack.Parent = card
 			createCorner(xpTrack, 8)

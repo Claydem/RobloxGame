@@ -297,12 +297,16 @@ local function renderTeamSelect()
 		end
 
 		local btn = Instance.new("TextButton")
-		btn.BackgroundColor3 = isAutoSelected and Color3.fromRGB(40,80,50) or Color3.fromRGB(30,34,48)
+		local classIcon = cfg and cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or ""
+		local rarityIcon = cfg and cfg.RarityConfig and cfg.RarityConfig.Icon or "⚪"
+		local classColor = cfg and cfg.ClassConfig and cfg.ClassConfig.Color
+		btn.BackgroundColor3 = classColor or (isAutoSelected and Color3.fromRGB(40,80,50) or Color3.fromRGB(30,34,48))
 		btn.TextColor3 = Color3.fromRGB(220,220,230)
 		btn.TextSize = 11; btn.Font = Enum.Font.GothamBold
-		btn.Text = name .. "\n❤️" .. (cfg and cfg.MaxHP or "?") .. " ⚔️" .. (cfg and cfg.Damage or "?")
+		btn.Text = rarityIcon .. " " .. name .. " " .. classIcon .. "\n❤️" .. (cfg and cfg.MaxHP or "?") .. " ⚔️" .. (cfg and cfg.Damage or "?")
 		btn.TextWrapped = true; btn.Parent = teamScroll
-		corner(btn, 8); stroke(btn, isAutoSelected and Color3.fromRGB(46,204,113) or Color3.fromRGB(60,70,90), 1)
+		corner(btn, 8)
+		local btnStroke = stroke(btn, isAutoSelected and Color3.fromRGB(46,204,113) or Color3.fromRGB(60,70,90), 1)
 
 		btn.MouseButton1Click:Connect(function()
 			-- Toggle selection
@@ -310,13 +314,15 @@ local function renderTeamSelect()
 			for i, uuid in ipairs(selectedTeamUUIDs) do
 				if uuid == unit.UUID then
 					table.remove(selectedTeamUUIDs, i)
-					btn.BackgroundColor3 = Color3.fromRGB(30,34,48)
+					btn.BackgroundColor3 = classColor or Color3.fromRGB(30,34,48)
+					btnStroke.Color = Color3.fromRGB(60,70,90)
 					found = true; break
 				end
 			end
 			if not found and #selectedTeamUUIDs < 3 then
 				table.insert(selectedTeamUUIDs, unit.UUID)
-				btn.BackgroundColor3 = Color3.fromRGB(40,80,50)
+				btn.BackgroundColor3 = classColor or Color3.fromRGB(40,80,50)
+				btnStroke.Color = Color3.fromRGB(46,204,113)
 			end
 			refreshTeamSlots()
 		end)
@@ -694,14 +700,16 @@ local function updateHP(data)
 		local r = math.clamp(data.P1_Unit.HP / data.P1_Unit.MaxHP, 0, 1)
 		tw(p1Fill, {Size=UDim2.new(r,0,1,0)}, 0.4)
 		p1HpLbl.Text = data.P1_Unit.HP.."/"..data.P1_Unit.MaxHP
-		p1Name.Text = "🟢 "..data.P1_Unit.Name
+		local classIcon = data.P1_Unit.ClassConfig and data.P1_Unit.ClassConfig.AbilityIcon or ""
+		p1Name.Text = "🟢 "..data.P1_Unit.Name .. (classIcon ~= "" and " " .. classIcon or "")
 		p1Fill.BackgroundColor3 = r>0.5 and Color3.fromRGB(46,204,113) or r>0.25 and Color3.fromRGB(241,196,15) or Color3.fromRGB(231,76,60)
 	end
 	if data.P2_Unit then
 		local r = math.clamp(data.P2_Unit.HP / data.P2_Unit.MaxHP, 0, 1)
 		tw(p2Fill, {Size=UDim2.new(r,0,1,0)}, 0.4)
 		p2HpLbl.Text = data.P2_Unit.HP.."/"..data.P2_Unit.MaxHP
-		p2Name.Text = "🔴 "..data.P2_Unit.Name
+		local classIcon = data.P2_Unit.ClassConfig and data.P2_Unit.ClassConfig.AbilityIcon or ""
+		p2Name.Text = "🔴 "..data.P2_Unit.Name .. (classIcon ~= "" and " " .. classIcon or "")
 	end
 	if data.P1_Alive and data.P1_TeamSize then
 		local dots = ""
@@ -1038,6 +1046,19 @@ if Events then
 					local cPos = iMadeAttack and 0.3 or 0.7
 					showDmgNumber("↩️ -"..data.CounterDmg, Color3.fromRGB(255, 200, 80), cPos, false)
 				end
+
+				if data.BurnApplied then
+					local p = iMadeAttack and 0.7 or 0.3
+					showDmgNumber("🔥 BURN!", Color3.fromRGB(255, 120, 0), p, false)
+				end
+				if data.HealAmount and data.HealAmount > 0 then
+					local p = iMadeAttack and 0.3 or 0.7
+					showDmgNumber("💎 +"..data.HealAmount.." HP", Color3.fromRGB(0, 255, 255), p, false)
+				end
+				if data.GlitchApplied then
+					local p = iMadeAttack and 0.7 or 0.3
+					showDmgNumber("💚 GLITCH!", Color3.fromRGB(0, 255, 100), p, false)
+				end
 			end)
 
 			local zoneNames = { Head="Head", Torso="Torso", Legs="Legs" }
@@ -1047,6 +1068,14 @@ if Events then
 				data.BlockResult == "PERFECT_BLOCK" and "PARRY!" or data.BlockResult == "PARTIAL_BLOCK" and "-50%" or "FULL HIT!",
 				data.PowerMult or 1
 			)
+
+		elseif data.Phase == "BurnDot" then
+			hideAllPanels()
+			updateHP(data)
+			local targetSide = data.TargetSide or "P2"
+			local targetPos = (targetSide == mySide) and 0.3 or 0.7
+			showDmgNumber("🔥 -"..(data.BurnDamage or 0).." BURN", Color3.fromRGB(255, 80, 20), targetPos, false)
+			playSFX("Hit", 0.8)
 
 		elseif data.Phase == "UnitSwap" then
 			hideAllPanels()
