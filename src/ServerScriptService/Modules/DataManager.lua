@@ -13,7 +13,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DATA_STORE_NAME = "BrainrotDataStore_v2"
+local DATA_STORE_NAME = "BrainrotDataStore_v3"
 local BrainrotDataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
 local DataManager = {}
