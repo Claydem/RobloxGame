@@ -1114,6 +1114,7 @@ task.spawn(function()
 	if InventoryUpdate then
 		InventoryUpdate.OnClientEvent:Connect(function(inv)
 			currentInventory = inv or currentInventory or {}
+			closeInspectionPanel()
 			if isBusy then
 				pendingInventory = currentInventory
 			else
