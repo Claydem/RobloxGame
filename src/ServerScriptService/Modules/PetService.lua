@@ -312,15 +312,43 @@ toggleEquipEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string
 	local data = DataManager.GetPlayerData(player)
 	if not data then return end
 
+	local MAX_CARE_ZONE = 12
+
 	for _, unit in ipairs(data.Inventory) do
 		if unit.UUID == unitUUID then
+			-- Якщо юніт НЕ в зоні і намагаємось його виставити — перевіряємо ліміт
+			if not unit.Equipped then
+				local equippedCount = 0
+				for _, u in ipairs(data.Inventory) do
+					if u.Equipped then equippedCount = equippedCount + 1 end
+				end
+				if equippedCount >= MAX_CARE_ZONE then
+					local eventsF = ReplicatedStorage:FindFirstChild("Events")
+					if eventsF and eventsF:FindFirstChild("RosterError") then
+						eventsF.RosterError:FireClient(player, "Care Zone is full! Remove a brainrot first. (Max 12)")
+					end
+					return
+				end
+			end
+
 			unit.Equipped = not unit.Equipped
 			PetService.UpdatePlayerPetModels(player)
+
+			-- Відправляємо оновлений інвентар і поточний рахунок слотів
+			local equippedCount = 0
+			for _, u in ipairs(data.Inventory) do
+				if u.Equipped then equippedCount = equippedCount + 1 end
+			end
 			inventoryUpdateEvent:FireClient(player, data.Inventory)
+			local eventsF = ReplicatedStorage:FindFirstChild("Events")
+			if eventsF and eventsF:FindFirstChild("RosterUpdate") then
+				eventsF.RosterUpdate:FireClient(player, equippedCount, MAX_CARE_ZONE)
+			end
 			break
 		end
 	end
 end)
+
 
 inventoryUpdateEvent.OnServerEvent:Connect(function(player: Player)
 	PetService.UpdatePlayerPetModels(player)

@@ -273,19 +273,27 @@ local function renderTeamSelect()
 	end
 	selectedTeamUUIDs = {}
 
-	if #cachedInventory == 0 then
+	local equippedUnits = {}
+	for _, unit in ipairs(cachedInventory) do
+		if unit.Equipped == true then
+			table.insert(equippedUnits, unit)
+		end
+	end
+
+	if #equippedUnits == 0 then
 		local emptyLbl = Instance.new("TextLabel")
 		emptyLbl.Size = UDim2.new(1, 0, 0, 60)
 		emptyLbl.BackgroundTransparency = 1
-		emptyLbl.Text = "⚠️ You don't have any Brainrots yet!\nOpen a case in the main menu to get fighters."
-		emptyLbl.TextColor3 = Color3.fromRGB(241, 196, 15)
+		emptyLbl.Text = "🏡 Your Care Zone is empty! Add brainrots to your Care Zone first."
+		emptyLbl.TextColor3 = Color3.fromRGB(255, 120, 50)
 		emptyLbl.TextSize = 13; emptyLbl.Font = Enum.Font.GothamBold
+		emptyLbl.TextWrapped = true
 		emptyLbl.Parent = teamScroll
 		refreshTeamSlots()
 		return
 	end
 
-	for _, unit in ipairs(cachedInventory) do
+	for _, unit in ipairs(equippedUnits) do
 		local cfg = ItemDB and ItemDB.GetItem(unit.ItemId)
 		local name = cfg and cfg.Name or unit.ItemId
 
@@ -328,7 +336,7 @@ local function renderTeamSelect()
 		end)
 	end
 
-	teamScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#cachedInventory / 4) * 68 + 10)
+	teamScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#equippedUnits / 4) * 68 + 10)
 	refreshTeamSlots()
 end
 

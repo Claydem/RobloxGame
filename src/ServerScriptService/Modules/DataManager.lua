@@ -79,6 +79,8 @@ local function setupRemotes()
 	getOrMakeRemote("UseShopItem", "RemoteFunction")
 	getOrMakeRemote("ConsumablesUpdate", "RemoteEvent")
 	getOrMakeRemote("BuffStateUpdate", "RemoteEvent")
+	getOrMakeRemote("RosterError", "RemoteEvent")
+	getOrMakeRemote("RosterUpdate", "RemoteEvent")
 end
 
 setupRemotes()
