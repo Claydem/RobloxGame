@@ -415,6 +415,14 @@ setTab = function(tabName)
 	shopFrame.Visible = (currentActiveTab == "Shop")
 	battleFrame.Visible = (currentActiveTab == "Battle")
 
+	-- Закриваємо Inspection Panel при переключенні вкладок
+	if inspectionPanel and inspectionPanel.Visible then
+		inspectionPanel.Visible = false
+		for _, c in ipairs(inspectionPanel:GetChildren()) do
+			if c:IsA("GuiObject") then c:Destroy() end
+		end
+	end
+
 	btnGachaTab.BackgroundColor3 = (currentActiveTab == "Gacha") and Color3.fromRGB(55, 65, 85) or Color3.fromRGB(35, 40, 52)
 	btnPetTab.BackgroundColor3 = (currentActiveTab == "Pets") and Color3.fromRGB(55, 65, 85) or Color3.fromRGB(35, 40, 52)
 	btnShopTab.BackgroundColor3 = (currentActiveTab == "Shop") and Color3.fromRGB(55, 65, 85) or Color3.fromRGB(35, 40, 52)
@@ -458,6 +466,220 @@ task.spawn(function()
 	local ConsumablesUpdate = EventsFolder:WaitForChild("ConsumablesUpdate", 5) :: RemoteEvent
 	local BuffStateUpdate = EventsFolder:WaitForChild("BuffStateUpdate", 5) :: RemoteEvent
 	local ToggleEquipPetEvent = EventsFolder:WaitForChild("ToggleEquipPet", 5) :: RemoteEvent
+	local RosterErrorEvent = EventsFolder:FindFirstChild("RosterError") :: RemoteEvent
+	local RosterUpdateEvent = EventsFolder:FindFirstChild("RosterUpdate") :: RemoteEvent
+
+	-- Inspection panel як TextButton — поглинає всі кліки і не пропускає їх крізь себе
+	local inspectionPanel = Instance.new("TextButton")
+	inspectionPanel.Size = UDim2.new(1, 0, 1, 0)
+	inspectionPanel.Position = UDim2.new(0, 0, 0, 0)
+	inspectionPanel.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+	inspectionPanel.BackgroundTransparency = 0.05
+	inspectionPanel.Text = ""
+	inspectionPanel.AutoButtonColor = false
+	inspectionPanel.ZIndex = 10
+	inspectionPanel.Visible = false
+	inspectionPanel.Parent = petScroll.Parent -- same parent as petScroll
+	createCorner(inspectionPanel, 12)
+
+	local function closeInspectionPanel()
+		inspectionPanel.Visible = false
+		for _, c in ipairs(inspectionPanel:GetChildren()) do
+			if c:IsA("GuiObject") then c:Destroy() end
+		end
+	end
+
+	local function showInspectionPanel(unit, stats, activeCount, maxCount)
+		-- Clear previous content
+		for _, c in ipairs(inspectionPanel:GetChildren()) do
+			if c:IsA("GuiObject") then c:Destroy() end
+		end
+		inspectionPanel.Visible = true
+
+		local rarityColor = stats.RarityConfig and stats.RarityConfig.Color or Color3.fromRGB(180, 180, 180)
+		local classColor = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(220, 220, 220)
+		local rarityIcon = stats.RarityConfig and stats.RarityConfig.Icon or "⚪"
+		local classIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or ""
+		local level = unit.Level or 1
+		local xp = unit.XP or 0
+		local maxXP = stats.MaxXP or 100
+		local xpRemaining = math.max(0, maxXP - xp)
+		local progressPct = math.clamp(xp / math.max(1, maxXP), 0, 1)
+
+		-- Close button
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Size = UDim2.new(0, 36, 0, 36)
+		closeBtn.Position = UDim2.new(1, -44, 0, 8)
+		closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		closeBtn.Text = "✕"
+		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeBtn.TextSize = 16
+		closeBtn.Font = Enum.Font.GothamBold
+		closeBtn.ZIndex = 11
+		closeBtn.Parent = inspectionPanel
+		createCorner(closeBtn, 8)
+		closeBtn.MouseButton1Click:Connect(closeInspectionPanel)
+
+		-- Name + Rarity + Class header
+		local headerFrame = Instance.new("Frame")
+		headerFrame.Size = UDim2.new(1, -16, 0, 52)
+		headerFrame.Position = UDim2.new(0, 8, 0, 8)
+		headerFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+		headerFrame.ZIndex = 11
+		headerFrame.Parent = inspectionPanel
+		createCorner(headerFrame, 10)
+		createStroke(headerFrame, rarityColor, 2)
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, -50, 0, 26)
+		nameLabel.Position = UDim2.new(0, 12, 0, 4)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = rarityIcon .. " " .. (stats.Name or unit.ItemId)
+		nameLabel.TextColor3 = rarityColor
+		nameLabel.TextSize = 16
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.ZIndex = 11
+		nameLabel.Parent = headerFrame
+
+		local classLabel = Instance.new("TextLabel")
+		classLabel.Size = UDim2.new(1, -12, 0, 20)
+		classLabel.Position = UDim2.new(0, 12, 0, 28)
+		classLabel.BackgroundTransparency = 1
+		classLabel.Text = string.format("%s [%s]  %s", classIcon, (stats.Class or "Normal"):upper(), stats.RarityConfig and stats.RarityConfig.Name or "Common")
+		classLabel.TextColor3 = classColor
+		classLabel.TextSize = 11
+		classLabel.Font = Enum.Font.GothamMedium
+		classLabel.TextXAlignment = Enum.TextXAlignment.Left
+		classLabel.ZIndex = 11
+		classLabel.Parent = headerFrame
+
+		-- Stats grid
+		local statsFrame = Instance.new("Frame")
+		statsFrame.Size = UDim2.new(1, -16, 0, 60)
+		statsFrame.Position = UDim2.new(0, 8, 0, 68)
+		statsFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+		statsFrame.ZIndex = 11
+		statsFrame.Parent = inspectionPanel
+		createCorner(statsFrame, 10)
+
+		local statsData = {
+			{ icon = "❤️", label = "HP",     value = tostring(stats.MaxHP or 0) },
+			{ icon = "⚔️",  label = "Damage", value = tostring(stats.Damage or 0) },
+			{ icon = "🌟", label = "GPS",    value = "+"..tostring(stats.IncomeRate or 0).."/5s" },
+			{ icon = "🍗", label = "Hunger", value = tostring(unit.Hunger or 100) .. "%" },
+		}
+		for i, sd in ipairs(statsData) do
+			local col = (i - 1) % 2
+			local row = math.floor((i - 1) / 2)
+			local statBlock = Instance.new("Frame")
+			statBlock.Size = UDim2.new(0.5, -8, 0, 26)
+			statBlock.Position = UDim2.new(col * 0.5, col == 0 and 6 or 2, 0, 6 + row * 28)
+			statBlock.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
+			statBlock.ZIndex = 11
+			statBlock.Parent = statsFrame
+			createCorner(statBlock, 6)
+
+			local statText = Instance.new("TextLabel")
+			statText.Size = UDim2.new(1, 0, 1, 0)
+			statText.BackgroundTransparency = 1
+			statText.Text = sd.icon .. " " .. sd.label .. ": " .. sd.value
+			statText.TextColor3 = Color3.fromRGB(220, 225, 240)
+			statText.TextSize = 11
+			statText.Font = Enum.Font.GothamBold
+			statText.ZIndex = 11
+			statText.Parent = statBlock
+		end
+
+		-- Class ability description
+		local perkFrame = Instance.new("Frame")
+		perkFrame.Size = UDim2.new(1, -16, 0, 40)
+		perkFrame.Position = UDim2.new(0, 8, 0, 136)
+		perkFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+		perkFrame.ZIndex = 11
+		perkFrame.Parent = inspectionPanel
+		createCorner(perkFrame, 10)
+		createStroke(perkFrame, classColor, 1)
+
+		local perkText = Instance.new("TextLabel")
+		perkText.Size = UDim2.new(1, -12, 1, 0)
+		perkText.Position = UDim2.new(0, 6, 0, 0)
+		perkText.BackgroundTransparency = 1
+		perkText.Text = classIcon .. " " .. (stats.ClassConfig and stats.ClassConfig.Perk or "Standard fighter. No special effects.")
+		perkText.TextColor3 = classColor
+		perkText.TextSize = 10
+		perkText.Font = Enum.Font.GothamMedium
+		perkText.TextWrapped = true
+		perkText.TextXAlignment = Enum.TextXAlignment.Left
+		perkText.ZIndex = 11
+		perkText.Parent = perkFrame
+
+		-- XP bar
+		local xpTrack = Instance.new("Frame")
+		xpTrack.Size = UDim2.new(1, -16, 0, 22)
+		xpTrack.Position = UDim2.new(0, 8, 0, 184)
+		xpTrack.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
+		xpTrack.ZIndex = 11
+		xpTrack.Parent = inspectionPanel
+		createCorner(xpTrack, 8)
+		createStroke(xpTrack, Color3.fromRGB(50, 55, 75), 1)
+
+		local xpFill = Instance.new("Frame")
+		xpFill.Size = UDim2.new(progressPct, 0, 1, 0)
+		xpFill.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+		xpFill.ZIndex = 11
+		xpFill.Parent = xpTrack
+		createCorner(xpFill, 8)
+
+		local xpLabel = Instance.new("TextLabel")
+		xpLabel.Size = UDim2.new(1, 0, 1, 0)
+		xpLabel.BackgroundTransparency = 1
+		xpLabel.Text = string.format("Lv.%d  XP: %d / %d  (%d to Lv.%d)", level, xp, maxXP, xpRemaining, level + 1)
+		xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		xpLabel.TextSize = 9
+		xpLabel.Font = Enum.Font.GothamBold
+		xpLabel.ZIndex = 11
+		xpLabel.Parent = xpTrack
+
+		-- Roster button
+		local canAdd = not unit.Equipped and (activeCount < maxCount)
+		local isFull = not unit.Equipped and (activeCount >= maxCount)
+		local btnColor = unit.Equipped and Color3.fromRGB(180, 60, 60) or (canAdd and Color3.fromRGB(46, 160, 80) or Color3.fromRGB(70, 75, 90))
+		local btnText = unit.Equipped and "✖ Remove from Care Zone" or (canAdd and "🏡 Add to Care Zone" or "🚫 Care Zone Full!")
+
+		local rosterBtn = Instance.new("TextButton")
+		rosterBtn.Size = UDim2.new(1, -16, 0, 38)
+		rosterBtn.Position = UDim2.new(0, 8, 0, 214)
+		rosterBtn.BackgroundColor3 = btnColor
+		rosterBtn.Text = btnText
+		rosterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		rosterBtn.TextSize = 13
+		rosterBtn.Font = Enum.Font.GothamBold
+		rosterBtn.ZIndex = 11
+		rosterBtn.Active = unit.Equipped or canAdd
+		rosterBtn.Parent = inspectionPanel
+		createCorner(rosterBtn, 10)
+
+		-- Active counter label
+		local counterLbl = Instance.new("TextLabel")
+		counterLbl.Size = UDim2.new(1, -16, 0, 20)
+		counterLbl.Position = UDim2.new(0, 8, 0, 255)
+		counterLbl.BackgroundTransparency = 1
+		counterLbl.Text = string.format("🏡 Active: %d / %d", activeCount, maxCount)
+		counterLbl.TextColor3 = activeCount >= maxCount and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(46, 204, 113)
+		counterLbl.TextSize = 12
+		counterLbl.Font = Enum.Font.GothamBold
+		counterLbl.ZIndex = 11
+		counterLbl.Parent = inspectionPanel
+
+		rosterBtn.MouseButton1Click:Connect(function()
+			if not (unit.Equipped or canAdd) then return end
+			if ToggleEquipPetEvent then
+				ToggleEquipPetEvent:FireServer(unit.UUID)
+				closeInspectionPanel()
+			end
+		end)
+	end
 
 	-- Render Pets Inventory
 	local function renderInventory(inv)
@@ -467,165 +689,100 @@ task.spawn(function()
 		currentInventory = currentInventory or {}
 
 		for _, child in ipairs(petScroll:GetChildren()) do
-			if child:IsA("Frame") then child:Destroy() end
+			if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
 		end
+
+		-- Count Care Zone active slots
+		local activeCount = 0
+		for _, u in ipairs(currentInventory) do
+			if u.Equipped then activeCount = activeCount + 1 end
+		end
+		local MAX_CARE_ZONE = 12
+
+		local counterHeader = Instance.new("TextLabel")
+		counterHeader.Size = UDim2.new(1, -8, 0, 30)
+		counterHeader.BackgroundTransparency = 1
+		counterHeader.Text = string.format("🏡 Care Zone Active: %d / %d", activeCount, MAX_CARE_ZONE)
+		counterHeader.TextColor3 = Color3.fromRGB(200, 205, 220)
+		counterHeader.TextSize = 14
+		counterHeader.Font = Enum.Font.GothamBold
+		counterHeader.Parent = petScroll
 
 		local itemDB = ItemDatabase or (ModulesFolder and ModulesFolder:FindFirstChild("ItemDatabase") and require(ModulesFolder.ItemDatabase))
 		if not itemDB then return end
 
+		-- Compact clickable cards
 		for _, unit in ipairs(currentInventory) do
 			local stats = itemDB.GetUnitStats and itemDB.GetUnitStats(unit) or itemDB.GetItem(unit.ItemId)
 			if not stats then continue end
 
-			local level = unit.Level or stats.Level or 1
-			local xp = unit.XP or stats.XP or 0
-			local maxXP = stats.MaxXP or (itemDB.GetXPRequired and itemDB.GetXPRequired(level)) or 100
-			local xpRemaining = math.max(0, maxXP - xp)
-			local progressPct = math.clamp(xp / math.max(1, maxXP), 0, 1)
-
-			local card = Instance.new("Frame")
-			card.Size = UDim2.new(1, -8, 0, 100)
+			local card = Instance.new("TextButton")
+			card.Size = UDim2.new(1, -8, 0, 56)
 			card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+			card.Text = ""
+			card.AutoButtonColor = false
 			card.Parent = petScroll
 			createCorner(card, 10)
 			local rarityColor = stats.RarityConfig and stats.RarityConfig.Color or Color3.fromRGB(60, 65, 80)
-			createStroke(card, rarityColor, 1)
+			local classColor = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(220, 220, 220)
+			createStroke(card, unit.Equipped and rarityColor or Color3.fromRGB(50, 55, 70), unit.Equipped and 1.5 or 1)
 
-			-- 3D Viewport Preview
-			local viewport = Instance.new("ViewportFrame")
-			viewport.Size = UDim2.new(0, 72, 0, 72)
-			viewport.Position = UDim2.new(0, 10, 0.5, -36)
-			viewport.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
-			viewport.BorderSizePixel = 0
-			viewport.Parent = card
-			createCorner(viewport, 8)
+			-- Status dot
+			local statusDot = Instance.new("TextLabel")
+			statusDot.Size = UDim2.new(0, 32, 0, 32)
+			statusDot.Position = UDim2.new(0, 8, 0.5, -16)
+			statusDot.BackgroundColor3 = unit.Equipped and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 55, 70)
+			statusDot.Text = unit.Equipped and "✅" or "📦"
+			statusDot.TextSize = 14
+			statusDot.Font = Enum.Font.GothamBold
+			statusDot.TextColor3 = Color3.fromRGB(255, 255, 255)
+			statusDot.Parent = card
+			createCorner(statusDot, 8)
 
-			-- Level badge overlaid on viewport
-			local lvlBadge = Instance.new("TextLabel")
-			lvlBadge.Size = UDim2.new(1, 0, 0, 18)
-			lvlBadge.Position = UDim2.new(0, 0, 1, -18)
-			lvlBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
-			lvlBadge.BackgroundTransparency = 0.3
-			lvlBadge.Text = "Lvl. " .. tostring(level)
-			lvlBadge.TextColor3 = Color3.fromRGB(255, 215, 0)
-			lvlBadge.TextSize = 10
-			lvlBadge.Font = Enum.Font.GothamBold
-			lvlBadge.Parent = viewport
-
-			if ModelLoader then
-				task.spawn(function()
-					local petModel = ModelLoader.LoadUnitModel(unit.ItemId)
-					if petModel then
-						petModel.Parent = viewport
-						local cam = Instance.new("Camera")
-						cam.Parent = viewport
-						viewport.CurrentCamera = cam
-						local prim = petModel.PrimaryPart or petModel:FindFirstChildOfClass("BasePart")
-						if prim then
-							cam.CFrame = CFrame.new(prim.Position + Vector3.new(0, 1.2, 3.8), prim.Position)
-						end
-					end
-				end)
-			end
-
-			-- Title + Class Tag
-			local title = Instance.new("TextLabel")
-			title.Size = UDim2.new(0, 320, 0, 22)
-			title.Position = UDim2.new(0, 92, 0, 8)
-			title.BackgroundTransparency = 1
+			-- Name + class
 			local rarityIcon = stats.RarityConfig and stats.RarityConfig.Icon or "⚪"
 			local classIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or ""
-			local classTag = string.format(" [%s]", (stats.Class or unit.Class or "Normal"):upper())
-			title.Text = rarityIcon .. " " .. (stats.Name or unit.ItemId) .. classTag .. " " .. classIcon .. (unit.Equipped and " ✅" or "")
-			title.TextColor3 = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(255, 255, 255)
-			title.TextSize = 13
-			title.Font = Enum.Font.GothamBold
-			title.TextXAlignment = Enum.TextXAlignment.Left
-			title.Parent = card
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(1, -120, 0, 22)
+			nameLabel.Position = UDim2.new(0, 50, 0, 8)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = rarityIcon .. " " .. (stats.Name or unit.ItemId) .. " " .. classIcon
+			nameLabel.TextColor3 = classColor
+			nameLabel.TextSize = 13
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+			nameLabel.Parent = card
 
-			-- Dynamic Stats
-			local statsLbl = Instance.new("TextLabel")
-			statsLbl.Size = UDim2.new(0, 350, 0, 18)
-			statsLbl.Position = UDim2.new(0, 92, 0, 32)
-			statsLbl.BackgroundTransparency = 1
-			statsLbl.Text = string.format("⚔️ DMG: %d  |  ❤️ HP: %d  |  🌟 +%d/5s  |  🍗 %d%%", stats.Damage or 10, stats.MaxHP or 100, stats.IncomeRate or 3, unit.Hunger or 100)
-			statsLbl.TextColor3 = Color3.fromRGB(200, 205, 220)
-			statsLbl.TextSize = 10
-			statsLbl.Font = Enum.Font.GothamMedium
-			statsLbl.TextXAlignment = Enum.TextXAlignment.Left
-			statsLbl.Parent = card
+			-- Level + stats mini
+			local level = unit.Level or 1
+			local infoLabel = Instance.new("TextLabel")
+			infoLabel.Size = UDim2.new(1, -120, 0, 18)
+			infoLabel.Position = UDim2.new(0, 50, 0, 30)
+			infoLabel.BackgroundTransparency = 1
+			infoLabel.Text = string.format("Lv.%d  ⚔️%d  ❤️%d  🌟+%d/5s  🍗%d%%", level, stats.Damage or 0, stats.MaxHP or 0, stats.IncomeRate or 0, unit.Hunger or 100)
+			infoLabel.TextColor3 = Color3.fromRGB(160, 165, 185)
+			infoLabel.TextSize = 9
+			infoLabel.Font = Enum.Font.GothamMedium
+			infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+			infoLabel.Parent = card
 
-			-- Class Perk label
-			local perkLbl = Instance.new("TextLabel")
-			perkLbl.Size = UDim2.new(0, 350, 0, 14)
-			perkLbl.Position = UDim2.new(0, 92, 0, 48)
-			perkLbl.BackgroundTransparency = 1
-			local perkText = stats.ClassConfig and stats.ClassConfig.Perk or "Standard fighter"
-			perkLbl.Text = (stats.ClassConfig and stats.ClassConfig.AbilityIcon or "") .. " " .. perkText
-			perkLbl.TextColor3 = stats.ClassConfig and stats.ClassConfig.Color or Color3.fromRGB(150, 150, 170)
-			perkLbl.TextSize = 8
-			perkLbl.Font = Enum.Font.Gotham
-			perkLbl.TextXAlignment = Enum.TextXAlignment.Left
-			perkLbl.TextTruncate = Enum.TextTruncate.AtEnd
-			perkLbl.Parent = card
+			-- "Inspect" arrow hint
+			local arrowBtn = Instance.new("TextLabel")
+			arrowBtn.Size = UDim2.new(0, 30, 0, 30)
+			arrowBtn.Position = UDim2.new(1, -36, 0.5, -15)
+			arrowBtn.BackgroundTransparency = 1
+			arrowBtn.Text = "›"
+			arrowBtn.TextColor3 = Color3.fromRGB(100, 110, 140)
+			arrowBtn.TextSize = 24
+			arrowBtn.Font = Enum.Font.GothamBold
+			arrowBtn.Parent = card
 
-			-- 📊 XP Progress Bar (Visual Track + Fill)
-			local xpTrack = Instance.new("Frame")
-			xpTrack.Size = UDim2.new(0, 280, 0, 18)
-			xpTrack.Position = UDim2.new(0, 92, 0, 66)
-			xpTrack.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
-			xpTrack.Parent = card
-			createCorner(xpTrack, 8)
-			createStroke(xpTrack, Color3.fromRGB(50, 55, 75), 1)
-
-			local xpFill = Instance.new("Frame")
-			xpFill.Size = UDim2.new(progressPct, 0, 1, 0)
-			xpFill.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
-			xpFill.Parent = xpTrack
-			createCorner(xpFill, 8)
-
-			local xpText = Instance.new("TextLabel")
-			xpText.Size = UDim2.new(1, 0, 1, 0)
-			xpText.BackgroundTransparency = 1
-			xpText.Text = string.format("XP: %d/%d (%d needed for Lvl %d)", xp, maxXP, xpRemaining, level + 1)
-			xpText.TextColor3 = Color3.fromRGB(255, 255, 255)
-			xpText.TextSize = 9
-			xpText.Font = Enum.Font.GothamBold
-			xpText.ZIndex = 5
-			xpText.Parent = xpTrack
-
-			-- Action Buttons
-			local btnSelect = Instance.new("TextButton")
-			btnSelect.Size = UDim2.new(0, 95, 0, 32)
-			btnSelect.Position = UDim2.new(1, -210, 0.5, -16)
-			btnSelect.BackgroundColor3 = (selectedPetForFeedUUID == unit.UUID) and Color3.fromRGB(241, 196, 15) or Color3.fromRGB(45, 52, 68)
-			btnSelect.Text = (selectedPetForFeedUUID == unit.UUID) and "Selected" or "Select"
-			btnSelect.TextColor3 = Color3.fromRGB(255, 255, 255)
-			btnSelect.TextSize = 11
-			btnSelect.Font = Enum.Font.GothamBold
-			btnSelect.Parent = card
-			createCorner(btnSelect, 8)
-
-			btnSelect.MouseButton1Click:Connect(function()
-				selectedPetForFeedUUID = unit.UUID
-				renderInventory(currentInventory)
-			end)
-
-			local btnEquip = Instance.new("TextButton")
-			btnEquip.Size = UDim2.new(0, 95, 0, 32)
-			btnEquip.Position = UDim2.new(1, -105, 0.5, -16)
-			btnEquip.BackgroundColor3 = unit.Equipped and Color3.fromRGB(149, 165, 166) or Color3.fromRGB(52, 152, 219)
-			btnEquip.Text = unit.Equipped and "Unequip" or "Equip"
-			btnEquip.TextColor3 = Color3.fromRGB(255, 255, 255)
-			btnEquip.TextSize = 11
-			btnEquip.Font = Enum.Font.GothamBold
-			btnEquip.Parent = card
-			createCorner(btnEquip, 8)
-
-			btnEquip.MouseButton1Click:Connect(function()
-				if ToggleEquipPetEvent then
-					ToggleEquipPetEvent:FireServer(unit.UUID)
-				end
+			-- Click opens inspection panel
+			local capturedUnit = unit
+			local capturedStats = stats
+			card.MouseButton1Click:Connect(function()
+				showInspectionPanel(capturedUnit, capturedStats, activeCount, MAX_CARE_ZONE)
 			end)
 		end
 	end
@@ -964,6 +1121,26 @@ task.spawn(function()
 			end
 		end)
 	end
+	
+	if RosterErrorEvent then
+		RosterErrorEvent.OnClientEvent:Connect(function(errorMsg)
+			-- Show a temporary error toast
+			local toast = Instance.new("TextLabel")
+			toast.Size = UDim2.new(0, 340, 0, 44)
+			toast.Position = UDim2.new(0.5, -170, 0, 80)
+			toast.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+			toast.Text = "🚫 " .. (errorMsg or "Care Zone is full!")
+			toast.TextColor3 = Color3.fromRGB(255, 255, 255)
+			toast.TextSize = 13
+			toast.Font = Enum.Font.GothamBold
+			toast.ZIndex = 20
+			toast.Parent = PlayerGui:FindFirstChildOfClass("ScreenGui") or mainFrame.Parent
+			createCorner(toast, 10)
+			task.delay(3, function()
+				if toast and toast.Parent then toast:Destroy() end
+			end)
+		end)
+	end
 
 	-- Початкове завантаження інвентаря при вході у гру
 	local GetPlayerDataFunc = EventsFolder:FindFirstChild("GetPlayerData") or EventsFolder:WaitForChild("GetPlayerData", 5) :: RemoteFunction
@@ -1055,19 +1232,4 @@ task.spawn(function()
 			end
 		end)
 	end
-
-	-- Повертаємо меню після завершення бою
-	local BattleEndEvent = EventsFolder and EventsFolder:FindFirstChild("BattleEnd")
-	if BattleEndEvent and BattleEndEvent:IsA("RemoteEvent") then
-		BattleEndEvent.OnClientEvent:Connect(function()
-			task.delay(5, function()
-				setMenuState(true)
-				toggleMenuBtn.Visible = true
-			end)
-		end)
-	end
-
-	renderShop()
 end)
-
-print("[ClientMainController] Готово!")

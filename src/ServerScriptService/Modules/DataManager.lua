@@ -187,9 +187,12 @@ local function loadData(player: Player)
 	if sessionData[player] then return end
 
 	local savedData = nil
-	local success, err = pcall(function()
+	local success, result = pcall(function()
 		return BrainrotDataStore:GetAsync("Player_" .. player.UserId)
 	end)
+	if success then
+		savedData = result
+	end
 
 	if success and savedData then
 		sessionData[player] = savedData
