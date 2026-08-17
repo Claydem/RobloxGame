@@ -147,10 +147,6 @@ local function startBattleBGM()
 		s.Parent = SoundService
 		bgmSound = s
 
-		if not s.IsLoaded then
-			s.Loaded:Wait()
-		end
-
 		if not isBgmPlaying then
 			s:Destroy()
 			return
@@ -158,17 +154,23 @@ local function startBattleBGM()
 
 		local startTime = CUSTOM_BATTLE_BGM_START_TIME or 0
 
-		-- Зациклення повертатиметься одразу на 43-тю секунду
+		-- Зациклення повертатиметься одразу на стартовий час
 		s.DidLoop:Connect(function()
-			if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
-				s.TimePosition = startTime
-			end
+			pcall(function()
+				if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
+					s.TimePosition = startTime
+				end
+			end)
 		end)
 
 		pcall(function() s:Play() end)
-		if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
-			s.TimePosition = startTime
-		end
+		task.delay(0.1, function()
+			pcall(function()
+				if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
+					s.TimePosition = startTime
+				end
+			end)
+		end)
 
 		tw(s, { Volume = 0.5 }, 1.0)
 		print(string.format("[BattleController] 🎵 Custom Battle BGM started at %.1fs: %s", startTime, CUSTOM_BATTLE_BGM_ID))
@@ -290,9 +292,14 @@ btn3v3.Text="⚔️ 3 vs 3"; btn3v3.TextSize=13; btn3v3.Font=Enum.Font.GothamBol
 btn3v3.Parent=modeFrame; corner(btn3v3,8)
 local stroke3v3 = stroke(btn3v3, Color3.fromRGB(255,215,0), 1.5)
 
+local selectedTeamUUIDs = {}
+
 local function setMode(size)
 	selectedTeamSize = size
-	selectedTeamUUIDs = {} -- Скидаємо попередній вибір при переході 3v3 <-> 1v1
+	-- Зберігаємо попередній вибір, але обрізаємо до нового ліміту
+	while #selectedTeamUUIDs > selectedTeamSize do
+		table.remove(selectedTeamUUIDs)
+	end
 
 	if size == 1 then
 		btn1v1.BackgroundColor3 = Color3.fromRGB(55,65,85)
@@ -322,7 +329,6 @@ teamScroll.CanvasSize=UDim2.new(0,0,0,0); teamScroll.Parent=teamPanel
 local grid = Instance.new("UIGridLayout")
 grid.CellSize=UDim2.new(0,130,0,60); grid.CellPadding=UDim2.new(0,8,0,8); grid.Parent=teamScroll
 
-local selectedTeamUUIDs = {}
 local teamSlotLabels = {}
 
 local teamSlotsFrame = Instance.new("Frame")
@@ -393,16 +399,27 @@ local function renderTeamSelect()
 	fetchLatestInventory()
 
 	for _, c in ipairs(teamScroll:GetChildren()) do
-		if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end
+		if c:IsA("GuiObject") and not c:IsA("UIGridLayout") and not c:IsA("UIListLayout") then
+			c:Destroy()
+		end
 	end
-	selectedTeamUUIDs = {}
-
 	local equippedUnits = {}
+	local validUUIDs = {}
 	for _, unit in ipairs(cachedInventory) do
 		if unit.Equipped == true then
 			table.insert(equippedUnits, unit)
+			validUUIDs[unit.UUID] = true
 		end
 	end
+	
+	-- Keep only valid equipped UUIDs
+	local newSelected = {}
+	for _, uuid in ipairs(selectedTeamUUIDs) do
+		if validUUIDs[uuid] then
+			table.insert(newSelected, uuid)
+		end
+	end
+	selectedTeamUUIDs = newSelected
 
 	if #equippedUnits == 0 then
 		local emptyLbl = Instance.new("TextLabel")
@@ -421,9 +438,17 @@ local function renderTeamSelect()
 		local cfg = ItemDB and ItemDB.GetItem(unit.ItemId)
 		local name = cfg and cfg.Name or unit.ItemId
 
-		-- Auto-select first N units based on mode
+		-- Check if already selected
 		local isAutoSelected = false
-		if #selectedTeamUUIDs < selectedTeamSize then
+		for _, uuid in ipairs(selectedTeamUUIDs) do
+			if uuid == unit.UUID then
+				isAutoSelected = true
+				break
+			end
+		end
+
+		-- Auto-select if we have space
+		if not isAutoSelected and #selectedTeamUUIDs < selectedTeamSize then
 			table.insert(selectedTeamUUIDs, unit.UUID)
 			isAutoSelected = true
 		end
@@ -438,7 +463,7 @@ local function renderTeamSelect()
 		btn.Text = rarityIcon .. " " .. name .. " " .. classIcon .. "\n❤️" .. (cfg and cfg.MaxHP or "?") .. " ⚔️" .. (cfg and cfg.Damage or "?")
 		btn.TextWrapped = true; btn.Parent = teamScroll
 		corner(btn, 8)
-		local btnStroke = stroke(btn, isAutoSelected and Color3.fromRGB(46,204,113) or Color3.fromRGB(60,70,90), 1)
+		local btnStroke = stroke(btn, isAutoSelected and Color3.fromRGB(46,204,113) or Color3.fromRGB(60,70,90), isAutoSelected and 3 or 1)
 
 		btn.MouseButton1Click:Connect(function()
 			-- Toggle selection
@@ -448,6 +473,7 @@ local function renderTeamSelect()
 					table.remove(selectedTeamUUIDs, i)
 					btn.BackgroundColor3 = classColor or Color3.fromRGB(30,34,48)
 					btnStroke.Color = Color3.fromRGB(60,70,90)
+					btnStroke.Thickness = 1
 					found = true; break
 				end
 			end
@@ -455,6 +481,7 @@ local function renderTeamSelect()
 				table.insert(selectedTeamUUIDs, unit.UUID)
 				btn.BackgroundColor3 = classColor or Color3.fromRGB(40,80,50)
 				btnStroke.Color = Color3.fromRGB(46,204,113)
+				btnStroke.Thickness = 3
 			end
 			refreshTeamSlots()
 		end)

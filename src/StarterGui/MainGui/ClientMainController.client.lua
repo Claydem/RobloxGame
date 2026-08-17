@@ -689,7 +689,9 @@ task.spawn(function()
 		currentInventory = currentInventory or {}
 
 		for _, child in ipairs(petScroll:GetChildren()) do
-			if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
+			if child:IsA("GuiObject") and not child:IsA("UIListLayout") and not child:IsA("UIGridLayout") then
+				child:Destroy()
+			end
 		end
 
 		-- Count Care Zone active slots
@@ -1229,6 +1231,7 @@ task.spawn(function()
 				task.delay(3.5, function()
 					arenaSubFrame.Visible = false
 					lobbySubFrame.Visible = true
+					toggleMenuBtn.Visible = true
 				end)
 			end
 		end)
