@@ -108,6 +108,10 @@ local SOUND_IDS = {
 -- Вставте сюди Asset ID вашого аудіофайлу (наприклад: "rbxassetid://1234567890")
 -- Якщо залишити рядок порожнім "", музика під час бою не гратиме.
 local CUSTOM_BATTLE_BGM_ID = ""
+
+-- ⏱️ З якої секунди починати трек (пропуск інтро / обрізка початку):
+-- Встановлено 43 (перші 43 секунди автоматично пропускаються)
+local CUSTOM_BATTLE_BGM_START_TIME = 43
 -- ====================================================================
 
 local bgmSound = nil
@@ -130,9 +134,14 @@ local function startBattleBGM()
 	end
 
 	task.spawn(function()
+		local trackId = tostring(CUSTOM_BATTLE_BGM_ID or "")
+		if trackId:match("^%d+$") then
+			trackId = "rbxassetid://" .. trackId
+		end
+
 		local s = Instance.new("Sound")
 		s.Name = "BattleBGM"
-		s.SoundId = CUSTOM_BATTLE_BGM_ID
+		s.SoundId = trackId
 		s.Volume = 0
 		s.Looped = true
 		s.PlaybackSpeed = 1.0
@@ -148,9 +157,22 @@ local function startBattleBGM()
 			return
 		end
 
+		local startTime = CUSTOM_BATTLE_BGM_START_TIME or 0
+
+		-- Зациклення повертатиметься одразу на 43-тю секунду
+		s.DidLoop:Connect(function()
+			if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
+				s.TimePosition = startTime
+			end
+		end)
+
 		pcall(function() s:Play() end)
+		if startTime > 0 and s.TimeLength and startTime < s.TimeLength then
+			s.TimePosition = startTime
+		end
+
 		tw(s, { Volume = 0.5 }, 1.0)
-		print("[BattleController] 🎵 Custom Battle BGM started: " .. CUSTOM_BATTLE_BGM_ID)
+		print(string.format("[BattleController] 🎵 Custom Battle BGM started at %.1fs: %s", startTime, CUSTOM_BATTLE_BGM_ID))
 	end)
 end
 
