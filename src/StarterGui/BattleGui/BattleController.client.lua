@@ -103,21 +103,24 @@ local SOUND_IDS = {
 	GlitchSFX  = "rbxassetid://4612373239",  -- Digital Glitch
 }
 
--- ====================================================================
--- 🎵 КОРИСТУВАЦЬКА МУЗИКА БОЮ (CUSTOM BATTLE BGM):
--- Вставте сюди Asset ID вашого аудіофайлу (наприклад: "rbxassetid://1234567890")
--- Якщо залишити рядок порожнім "", музика під час бою не гратиме.
-local CUSTOM_BATTLE_BGM_ID = "78744747224727"
+-- Якщо залишити масив порожнім {}, музика під час бою не гратиме.
+local CUSTOM_BATTLE_BGM_IDS = {
+	"136687027554626",
+	"78744747224727"
+}
 
 -- ⏱️ З якої секунди починати трек (0 = грати з самого початку файлу):
 local CUSTOM_BATTLE_BGM_START_TIME = 0
+
+-- 🔊 Гучність музики (робимо тихіше, щоб ефекти було краще чути)
+local CUSTOM_BATTLE_BGM_VOLUME = 0.15
 -- ====================================================================
 
 local bgmSound = nil
 local isBgmPlaying = false
 
 local function startBattleBGM()
-	if not CUSTOM_BATTLE_BGM_ID or CUSTOM_BATTLE_BGM_ID == "" then
+	if not CUSTOM_BATTLE_BGM_IDS or #CUSTOM_BATTLE_BGM_IDS == 0 then
 		return -- Музику вимкнено (ID не вказано)
 	end
 
@@ -133,7 +136,8 @@ local function startBattleBGM()
 	end
 
 	task.spawn(function()
-		local trackId = tostring(CUSTOM_BATTLE_BGM_ID or "")
+		local randomId = CUSTOM_BATTLE_BGM_IDS[math.random(1, #CUSTOM_BATTLE_BGM_IDS)]
+		local trackId = tostring(randomId or "")
 		if trackId:match("^%d+$") then
 			trackId = "rbxassetid://" .. trackId
 		end
@@ -172,8 +176,8 @@ local function startBattleBGM()
 			end)
 		end)
 
-		tw(s, { Volume = 0.5 }, 1.0)
-		print(string.format("[BattleController] 🎵 Custom Battle BGM started at %.1fs: %s", startTime, CUSTOM_BATTLE_BGM_ID))
+		tw(s, { Volume = CUSTOM_BATTLE_BGM_VOLUME }, 1.0)
+		print(string.format("[BattleController] 🎵 Custom Battle BGM started at %.1fs: %s", startTime, trackId))
 	end)
 end
 
@@ -1010,10 +1014,9 @@ local function triggerPrecisionHit()
 	local ge = 200
 	precisionHit = (nx >= gx and nx <= ge)
 	if precisionHit then
-		playSFX("CritHit", 1.0, 1.2)
-		cameraShake(1.5, 0.3)
+		playSFX("CritHit", 1.5, 1.2)
 	else
-		playSFX("Click", 0.6, 0.8)
+		playSFX("Click", 1.2, 0.8)
 	end
 	precHint.Text = precisionHit and "🎯 CRITICAL HIT!" or "❌ MISSED"
 	precHint.TextColor3 = precisionHit and Color3.fromRGB(255,215,0) or Color3.fromRGB(231,76,60)
@@ -1024,7 +1027,7 @@ mashBtn.MouseButton1Click:Connect(function()
 
 	-- Mash phase
 	mashCount = mashCount + 1
-	playSFX("Mash", 0.5, 0.9 + (mashCount * 0.025))
+	playSFX("Mash", 1.5, 0.9 + (mashCount * 0.025))
 	cameraShake(0.3, 0.1)
 	local mult = math.clamp(1 + mashCount/40, 1, 2)
 	pwrFill.Size = UDim2.new((mult-1), 0, 1, 0)
@@ -1106,12 +1109,12 @@ defBtn.MouseButton1Click:Connect(function()
 	local ge = 205
 	defenseSuccess = (nx >= gx and nx <= ge)
 	if defenseSuccess then
-		playSFX("Block", 1.0, 1.1)
+		playSFX("Block", 1.5, 1.1)
 		cameraShake(1.0, 0.25)
 		defBtn.Text = "🛡️ PERFECT BLOCK!"
 		defBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
 	else
-		playSFX("Click", 0.5, 0.7)
+		playSFX("Click", 1.2, 0.7)
 		defBtn.Text = "❌ MISSED!"
 		defBtn.BackgroundColor3 = Color3.fromRGB(231,76,60)
 	end
@@ -1206,11 +1209,11 @@ if Events then
 				spawnImpactParticles(impactPos, isCrit, isBlock)
 
 				if isBlock then
-					playSFX("Block", 1.0)
+					playSFX("Block", 1.5)
 				elseif isCrit then
-					playSFX("CritHit", 1.0)
+					playSFX("CritHit", 1.5)
 				else
-					playSFX("Hit", 0.9)
+					playSFX("Hit", 1.2)
 				end
 
 				local shakeIntensity = isCrit and 2.5 or isBlock and 0.8 or 1.4
@@ -1263,11 +1266,11 @@ if Events then
 			local targetSide = data.TargetSide or "P2"
 			local targetPos = (targetSide == mySide) and 0.3 or 0.7
 			showDmgNumber("🔥 -"..(data.BurnDamage or 0).." BURN", Color3.fromRGB(255, 80, 20), targetPos, false)
-			playSFX("Hit", 0.8)
+			playSFX("Hit", 1.2)
 
 		elseif data.Phase == "UnitSwap" then
 			hideAllPanels()
-			playSFX("Death", 0.9)
+			playSFX("Death", 1.5)
 			cameraShake(1.8, 0.45)
 
 			local isMySwap = (data.SwapSide == mySide)
@@ -1292,7 +1295,7 @@ if Events then
 		local isDraw = (data.Result == "Draw")
 
 		if iWon then
-			playSFX("Victory", 1.0)
+			playSFX("Victory", 1.5)
 			cameraShake(2.0, 0.6)
 			resultLbl.Text = "🏆 VICTORY! +" .. (data.Reward or 0) .. " BrainCells"
 			resultLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -1301,7 +1304,7 @@ if Events then
 			resultLbl.Text = "🤝 DRAW!"
 			resultLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
 		else
-			playSFX("Defeat", 1.0)
+			playSFX("Defeat", 1.5)
 			cameraShake(1.5, 0.5)
 			resultLbl.Text = "💀 DEFEAT!"
 			resultLbl.TextColor3 = Color3.fromRGB(231, 76, 60)
