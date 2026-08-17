@@ -103,21 +103,26 @@ local SOUND_IDS = {
 	GlitchSFX  = "rbxassetid://4612373239",  -- Digital Glitch
 }
 
--- КОРИСТУВАЦЬКИЙ ЗВУК: вставте сюди ваш Asset ID після завантаження MP3 (наприклад "rbxassetid://123456789")
-local CUSTOM_USER_BGM_ID = ""
-
-local BGM_TRACKS = {
-	"rbxassetid://1839840134",  -- Aggressive Combat Orchestral
-	"rbxassetid://1837849285",  -- Dark Heavy Metal Arena
-	"rbxassetid://9042530188",  -- Cyberpunk Synth Combat
-	"rbxassetid://1847567364",  -- Epic Battle Drums & Brass
-	"rbxassetid://1846971179",  -- Intense Fighting Theme
-}
+-- ====================================================================
+-- 🎵 КОРИСТУВАЦЬКА МУЗИКА БОЮ (CUSTOM BATTLE BGM):
+-- Вставте сюди Asset ID вашого аудіофайлу (наприклад: "rbxassetid://1234567890")
+-- Якщо залишити рядок порожнім "", музика під час бою не гратиме.
+local CUSTOM_BATTLE_BGM_ID = ""
+-- ====================================================================
 
 local bgmSound = nil
+local isBgmPlaying = false
 
 local function startBattleBGM()
-	-- Stop any existing BGM first
+	if not CUSTOM_BATTLE_BGM_ID or CUSTOM_BATTLE_BGM_ID == "" then
+		return -- Музику вимкнено (ID не вказано)
+	end
+
+	if isBgmPlaying and bgmSound and bgmSound.IsPlaying then
+		return
+	end
+	isBgmPlaying = true
+
 	if bgmSound and bgmSound.Parent then
 		bgmSound:Stop()
 		bgmSound:Destroy()
@@ -125,38 +130,43 @@ local function startBattleBGM()
 	end
 
 	task.spawn(function()
-		local trackId
-		if CUSTOM_USER_BGM_ID and CUSTOM_USER_BGM_ID ~= "" then
-			trackId = CUSTOM_USER_BGM_ID
-		else
-			trackId = BGM_TRACKS[math.random(1, #BGM_TRACKS)]
-		end
-
 		local s = Instance.new("Sound")
 		s.Name = "BattleBGM"
-		s.SoundId = trackId
+		s.SoundId = CUSTOM_BATTLE_BGM_ID
 		s.Volume = 0
 		s.Looped = true
 		s.PlaybackSpeed = 1.0
 		s.Parent = SoundService
 		bgmSound = s
 
+		if not s.IsLoaded then
+			s.Loaded:Wait()
+		end
+
+		if not isBgmPlaying then
+			s:Destroy()
+			return
+		end
+
 		pcall(function() s:Play() end)
-		tw(s, { Volume = 0.45 }, 1.5)
+		tw(s, { Volume = 0.5 }, 1.0)
+		print("[BattleController] 🎵 Custom Battle BGM started: " .. CUSTOM_BATTLE_BGM_ID)
 	end)
 end
 
 local function stopBattleBGM()
-	task.spawn(function()
-		if bgmSound and bgmSound.Parent then
-			tw(bgmSound, { Volume = 0.0 }, 1.0)
-			task.delay(1.1, function()
-				if bgmSound then
-					bgmSound:Stop()
-				end
-			end)
-		end
-	end)
+	isBgmPlaying = false
+	if bgmSound and bgmSound.Parent then
+		local currentSound = bgmSound
+		bgmSound = nil
+		tw(currentSound, { Volume = 0.0 }, 0.8)
+		task.delay(0.9, function()
+			if currentSound and currentSound.Parent then
+				currentSound:Stop()
+				currentSound:Destroy()
+			end
+		end)
+	end
 end
 
 local function playSFX(soundName, vol, pitch)
@@ -173,6 +183,7 @@ local function playSFX(soundName, vol, pitch)
 		task.delay(4, function() if s and s.Parent then s:Destroy() end end)
 	end)
 end
+
 
 -- ═══════════════════════════════════════════════════════
 --  MAIN FRAME
@@ -260,6 +271,8 @@ local stroke3v3 = stroke(btn3v3, Color3.fromRGB(255,215,0), 1.5)
 
 local function setMode(size)
 	selectedTeamSize = size
+	selectedTeamUUIDs = {} -- Скидаємо попередній вибір при переході 3v3 <-> 1v1
+
 	if size == 1 then
 		btn1v1.BackgroundColor3 = Color3.fromRGB(55,65,85)
 		stroke1v1.Color = Color3.fromRGB(255,215,0)
@@ -311,22 +324,38 @@ startBattleBtn.Parent=teamPanel; corner(startBattleBtn,10)
 
 local function refreshTeamSlots()
 	for i = 1, 3 do
-		if selectedTeamUUIDs[i] then
-			-- Find name
-			for _, u in ipairs(cachedInventory) do
-				if u.UUID == selectedTeamUUIDs[i] then
-					local cfg = ItemDB and ItemDB.GetItem(u.ItemId)
-					teamSlotLabels[i].Text = "Slot "..i..": "..(cfg and cfg.Name or u.ItemId)
-					teamSlotLabels[i].TextColor3 = Color3.fromRGB(46,204,113)
-					break
-				end
-			end
+		local sl = teamSlotLabels[i]
+		if not sl then continue end
+
+		if i > selectedTeamSize then
+			sl.Visible = false
 		else
-			teamSlotLabels[i].Text = "Slot "..i..": empty"
-			teamSlotLabels[i].TextColor3 = Color3.fromRGB(150,150,170)
+			sl.Visible = true
+			if selectedTeamSize == 1 then
+				sl.Size = UDim2.new(0, 360, 0, 24)
+				sl.Position = UDim2.new(0, 0, 0, 0)
+			else
+				sl.Size = UDim2.new(0, 180, 0, 24)
+				sl.Position = UDim2.new(0, (i - 1) * 190, 0, 0)
+			end
+
+			if selectedTeamUUIDs[i] then
+				-- Find name
+				for _, u in ipairs(cachedInventory) do
+					if u.UUID == selectedTeamUUIDs[i] then
+						local cfg = ItemDB and ItemDB.GetItem(u.ItemId)
+						sl.Text = "Slot " .. i .. ": " .. (cfg and cfg.Name or u.ItemId)
+						sl.TextColor3 = Color3.fromRGB(46, 204, 113)
+						break
+					end
+				end
+			else
+				sl.Text = "Slot " .. i .. ": empty"
+				sl.TextColor3 = Color3.fromRGB(150, 150, 170)
+			end
 		end
 	end
-	startBattleBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(46,204,113) or Color3.fromRGB(100,100,100)
+	startBattleBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 100)
 end
 
 local function fetchLatestInventory()
@@ -1052,9 +1081,8 @@ if Events then
 		currentPhase = data.Phase
 		updateHP(data)
 
-		startBattleBGM()
-
 		if data.Phase == "Intro" then
+			startBattleBGM()
 			hideAllPanels()
 			playSFX("FightVoice", 1.0)
 			cameraShake(2.0, 0.5)
