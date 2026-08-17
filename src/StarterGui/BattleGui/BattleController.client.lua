@@ -107,7 +107,7 @@ local SOUND_IDS = {
 -- 🎵 КОРИСТУВАЦЬКА МУЗИКА БОЮ (CUSTOM BATTLE BGM):
 -- Вставте сюди Asset ID вашого аудіофайлу (наприклад: "rbxassetid://1234567890")
 -- Якщо залишити рядок порожнім "", музика під час бою не гратиме.
-local CUSTOM_BATTLE_BGM_ID = ""
+local CUSTOM_BATTLE_BGM_ID = "78744747224727"
 
 -- ⏱️ З якої секунди починати трек (0 = грати з самого початку файлу):
 local CUSTOM_BATTLE_BGM_START_TIME = 0
