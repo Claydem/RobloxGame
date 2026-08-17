@@ -103,8 +103,7 @@ end
 --  ARENA MODEL MANAGEMENT
 -- ═══════════════════════════════════════════════════════
 
-local function spawnModel(itemId, padName)
-	local arena = Workspace:FindFirstChild("FightClubArena")
+local function spawnModel(arena, itemId, padName)
 	if not arena then return nil end
 	local pad1 = arena:FindFirstChild("P1_SpawnPad")
 	local pad2 = arena:FindFirstChild("P2_SpawnPad")
@@ -140,15 +139,35 @@ local function swapModel(session, side)
 	local unit = getActiveUnit(session, side)
 	if unit then
 		local padName = side == "P1" and "P1_SpawnPad" or "P2_SpawnPad"
-		session[modelKey] = spawnModel(unit.ItemId, padName)
+		session[modelKey] = spawnModel(session.ArenaFolder, unit.ItemId, padName)
 	end
 end
 
-local function teleportToArena(player)
+local function teleportToArena(player, pos)
 	if not player or not player.Character then return end
 	local root = player.Character:FindFirstChild("HumanoidRootPart")
 	if root then
-		root.CFrame = CFrame.new(Vector3.new(200, 4, 30))
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		player.Character:PivotTo(CFrame.new(pos))
+	end
+end
+
+local function teleportToBase(player)
+	if not player or not player.Character then return end
+	local root = player.Character:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		local baseFolder = Workspace:FindFirstChild("Base_" .. player.UserId)
+		if baseFolder then
+			local spawnLoc = baseFolder:FindFirstChild("SpawnLocation")
+			if spawnLoc then
+				player.Character:PivotTo(CFrame.new(spawnLoc.Position + Vector3.new(0, 3, 10)))
+				return
+			end
+		end
+		player.Character:PivotTo(CFrame.new(0, 4, 20))
 	end
 end
 
@@ -537,8 +556,17 @@ local function runBattle(session)
 	task.delay(5, function()
 		if session.P1_Model then session.P1_Model:Destroy() end
 		if session.P2_Model then session.P2_Model:Destroy() end
-		if session.Player1 then playerBattles[session.Player1] = nil end
-		if session.Player2 then playerBattles[session.Player2] = nil end
+		if session.Player1 then 
+			teleportToBase(session.Player1)
+			playerBattles[session.Player1] = nil 
+		end
+		if session.Player2 and not session.IsBot then 
+			teleportToBase(session.Player2)
+			playerBattles[session.Player2] = nil 
+		end
+		if session.ArenaFolder then
+			session.ArenaFolder:Destroy()
+		end
 		activeBattles[session.BattleId] = nil
 	end)
 end
@@ -665,22 +693,28 @@ function BattleService.StartBotBattle(player, teamUUIDs, teamSize)
 	end
 
 	local botTeam = buildBotTeam(player, teamSize)
-	teleportToArena(player)
-
 	local battleId = HttpService:GenerateGUID(false)
+	
+	-- Generate specific arena for this battle
+	local MapManager = require(game:GetService("ServerScriptService"):WaitForChild("Modules"):WaitForChild("MapManager"))
+	local arenaInfo = MapManager.GenerateIsolatedArena(battleId)
+	
+	teleportToArena(player, arenaInfo.P1_Pos)
+
 	local session = {
 		BattleId = battleId,
 		IsBot    = true,
 		Player1  = player,
 		Player2  = nil,
+		ArenaFolder = arenaInfo.Folder,
 
 		P1_Team      = pTeam,
 		P1_ActiveIdx = 1,
-		P1_Model     = spawnModel(pTeam[1].ItemId, "P1_SpawnPad"),
+		P1_Model     = spawnModel(arenaInfo.Folder, pTeam[1].ItemId, "P1_SpawnPad"),
 
 		P2_Team      = botTeam,
 		P2_ActiveIdx = 1,
-		P2_Model     = spawnModel(botTeam[1].ItemId, "P2_SpawnPad"),
+		P2_Model     = spawnModel(arenaInfo.Folder, botTeam[1].ItemId, "P2_SpawnPad"),
 
 		CurrentAttacker = "P1",
 		Turn   = 1,
@@ -730,15 +764,21 @@ function BattleService.StartPvPBattle(p1, p2)
 
 	if #t1 == 0 or #t2 == 0 then return end
 
-	teleportToArena(p1)
-	teleportToArena(p2)
-
 	local battleId = HttpService:GenerateGUID(false)
+	
+	-- Generate specific arena for this battle
+	local MapManager = require(game:GetService("ServerScriptService"):WaitForChild("Modules"):WaitForChild("MapManager"))
+	local arenaInfo = MapManager.GenerateIsolatedArena(battleId)
+
+	teleportToArena(p1, arenaInfo.P1_Pos)
+	teleportToArena(p2, arenaInfo.P2_Pos)
+
 	local session = {
 		BattleId = battleId, IsBot = false,
 		Player1 = p1, Player2 = p2,
-		P1_Team = t1, P1_ActiveIdx = 1, P1_Model = spawnModel(t1[1].ItemId, "P1_SpawnPad"),
-		P2_Team = t2, P2_ActiveIdx = 1, P2_Model = spawnModel(t2[1].ItemId, "P2_SpawnPad"),
+		ArenaFolder = arenaInfo.Folder,
+		P1_Team = t1, P1_ActiveIdx = 1, P1_Model = spawnModel(arenaInfo.Folder, t1[1].ItemId, "P1_SpawnPad"),
+		P2_Team = t2, P2_ActiveIdx = 1, P2_Model = spawnModel(arenaInfo.Folder, t2[1].ItemId, "P2_SpawnPad"),
 		CurrentAttacker = "P1", Turn = 1, Status = "InProgress",
 	}
 
@@ -794,6 +834,7 @@ Players.PlayerRemoving:Connect(function(player)
 			s.Status = "Abandoned"
 			if s.P1_Model then s.P1_Model:Destroy() end
 			if s.P2_Model then s.P2_Model:Destroy() end
+			if s.ArenaFolder then s.ArenaFolder:Destroy() end
 			activeBattles[bid] = nil
 		end
 		playerBattles[player] = nil

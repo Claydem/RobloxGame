@@ -395,17 +395,19 @@ local function buildHub()
 end
 
 -- ════════════════════════════════════════════════════════
---  ZONE 2:  PET CARE ZONE  (origin -200,0,0)
+--  PLAYER BASES (Tycoon Style)
 -- ════════════════════════════════════════════════════════
 
-local function buildCareZone()
-	if Workspace:FindFirstChild("PetCareZone") then return end
+function MapManager.GeneratePlayerBase(player, index)
+	local baseName = "Base_" .. player.UserId
+	if Workspace:FindFirstChild(baseName) then return Workspace[baseName] end
 
 	local care = Instance.new("Folder")
-	care.Name = "PetCareZone"
+	care.Name = baseName
 	care.Parent = Workspace
 
-	local cx, cz = -200, 0 -- центр зони
+	-- Створюємо бази вздовж осі X, наприклад, з відступом 500 стадів
+	local cx, cz = 500 * index, 0 -- центр зони
 
 	-- ── Основна травʼяна платформа ──────────────────────
 	part("CareGround", Vector3.new(120, 3, 90), Vector3.new(cx, -1.5, cz),
@@ -518,150 +520,126 @@ local function buildCareZone()
 		particles(flower, Color3.fromRGB(255, 200, 150), 5, 0.3, 0.1, 3)
 	end
 
+	-- ── SpawnLocation ──────────────────────────────
+	local spawnLoc = Instance.new("SpawnLocation")
+	spawnLoc.Name = "SpawnLocation"
+	spawnLoc.Size = Vector3.new(10, 1, 10)
+	spawnLoc.Position = Vector3.new(cx, 0.5, cz - 15)
+	spawnLoc.Color = Color3.fromRGB(0, 150, 255)
+	spawnLoc.Material = Enum.Material.Neon
+	spawnLoc.Anchored = true
+	spawnLoc.Duration = 0 -- disable forcefield if needed
+	spawnLoc.Parent = care
+	sign3D("YOUR BASE", spawnLoc, Vector3.new(0, 3, 0), 16, Color3.fromRGB(255, 255, 255))
+
 	-- ── Teleport Back to Hub ──────────────────────────
-	teleportPad("TP_ToHub_FromCare", Vector3.new(cx + 55, 0.5, cz),
-		Color3.fromRGB(0, 170, 255), "🔙 Return to Hub", care)
+	teleportPad("TP_ToHub", Vector3.new(cx + 55, 0.5, cz),
+		Color3.fromRGB(0, 170, 255), "🔙 Hub", care)
 
-	print("[MapManager] ✅ Pet Care Zone built!")
+	print("[MapManager] ✅ Base built for " .. player.Name)
+	return care
 end
 
 -- ════════════════════════════════════════════════════════
---  ZONE 3:  FIGHT CLUB ARENA  (origin +200,0,0) — ENCLOSED STADIUM WITH 360° CROWD
+--  ISOLATED BATTLE ARENAS (Generated dynamically in the sky)
 -- ════════════════════════════════════════════════════════
 
-local function createSpectatorNPC(name, pos, color, parent)
-	local npc = Instance.new("Model")
-	npc.Name = "Spectator_" .. name
-	npc.Parent = parent
-
-	local torso = part("Torso", Vector3.new(2, 2, 1), pos + Vector3.new(0, 1.5, 0), color, Enum.Material.SmoothPlastic, npc)
-	npc.PrimaryPart = torso
-	local head = part("Head", Vector3.new(1.2, 1.2, 1.2), pos + Vector3.new(0, 3.1, 0), Color3.fromRGB(255, 205, 160), Enum.Material.SmoothPlastic, npc)
-	local lArm = part("LArm", Vector3.new(0.8, 2, 0.8), pos + Vector3.new(-1.4, 1.5, 0), color, Enum.Material.SmoothPlastic, npc)
-	local rArm = part("RArm", Vector3.new(0.8, 2, 0.8), pos + Vector3.new(1.4, 1.5, 0), color, Enum.Material.SmoothPlastic, npc)
-	local legs = part("Legs", Vector3.new(1.8, 1.5, 0.9), pos + Vector3.new(0, 0.75, 0), Color3.fromRGB(30, 35, 50), Enum.Material.SmoothPlastic, npc)
-
-	-- Join parts
-	lArm.CanCollide = false; rArm.CanCollide = false; head.CanCollide = false
-	return { model = npc, torso = torso, lArm = lArm, rArm = rArm, basePos = pos }
-end
-
-local function buildArena()
-	if Workspace:FindFirstChild("FightClubArena") then return end
+function MapManager.GenerateIsolatedArena(battleId)
+	local arenaName = "Arena_" .. battleId
+	if Workspace:FindFirstChild(arenaName) then return Workspace[arenaName] end
 
 	local arena = Instance.new("Folder")
-	arena.Name = "FightClubArena"
+	arena.Name = arenaName
 	arena.Parent = Workspace
 
-	local ax, az = 200, 0
+	-- Кожна арена спавниться на окремій висоті
+	local ax, az = 0, 0
+	local ay = 2000 + (tonumber(battleId:match("%d+$")) or math.random(1, 100)) * 500
 
 	-- ── 1. ЗАКРИТА ОСНОВА ТА СТІНИ СТАДІОНУ (Enclosed Stadium Base) ───────────────────────────
-	part("ArenaFloor", Vector3.new(120, 4, 120), Vector3.new(ax, -2, az),
+	part("ArenaFloor", Vector3.new(120, 4, 120), Vector3.new(ax, ay - 2, az),
 		Color3.fromRGB(18, 20, 28), Enum.Material.DiamondPlate, arena)
 
 	-- Neon floor cross accent
-	part("ArenaFloorCrossX", Vector3.new(40, 0.15, 2), Vector3.new(ax, 0.08, az),
+	part("ArenaFloorCrossX", Vector3.new(40, 0.15, 2), Vector3.new(ax, ay + 0.08, az),
 		Color3.fromRGB(255, 30, 30), Enum.Material.Neon, arena).CanCollide = false
-	part("ArenaFloorCrossZ", Vector3.new(2, 0.15, 40), Vector3.new(ax, 0.08, az),
+	part("ArenaFloorCrossZ", Vector3.new(2, 0.15, 40), Vector3.new(ax, ay + 0.08, az),
 		Color3.fromRGB(255, 30, 30), Enum.Material.Neon, arena).CanCollide = false
 	-- Outer ring glow
-	part("ArenaRingGlow", Vector3.new(48, 0.1, 48), Vector3.new(ax, 0.05, az),
+	part("ArenaRingGlow", Vector3.new(48, 0.1, 48), Vector3.new(ax, ay + 0.05, az),
 		Color3.fromRGB(180, 20, 20), Enum.Material.Neon, arena).CanCollide = false
 
 	-- 4 Високі закриті стіни з гартованого скла та сталі (Повний захист від випадіння)
 	local glassCol = Color3.fromRGB(40, 50, 70)
-	local wallN = part("EnclosedWallN", Vector3.new(120, 25, 3), Vector3.new(ax, 12.5, az - 58.5), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
-	local wallS = part("EnclosedWallS", Vector3.new(120, 25, 3), Vector3.new(ax, 12.5, az + 58.5), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
-	local wallW = part("EnclosedWallW", Vector3.new(3, 25, 120), Vector3.new(ax - 58.5, 12.5, az), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
-	local wallE = part("EnclosedWallE", Vector3.new(3, 25, 120), Vector3.new(ax + 58.5, 12.5, az), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
+	local wallN = part("EnclosedWallN", Vector3.new(120, 25, 3), Vector3.new(ax, ay + 12.5, az - 58.5), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
+	local wallS = part("EnclosedWallS", Vector3.new(120, 25, 3), Vector3.new(ax, ay + 12.5, az + 58.5), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
+	local wallW = part("EnclosedWallW", Vector3.new(3, 25, 120), Vector3.new(ax - 58.5, ay + 12.5, az), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
+	local wallE = part("EnclosedWallE", Vector3.new(3, 25, 120), Vector3.new(ax + 58.5, ay + 12.5, az), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
 
 	-- Захисне скло з неоновою рамкою
-	local glassN = part("GlassN", Vector3.new(114, 18, 1), Vector3.new(ax, 14, az - 57), glassCol, Enum.Material.Glass, arena)
+	local glassN = part("GlassN", Vector3.new(114, 18, 1), Vector3.new(ax, ay + 14, az - 57), glassCol, Enum.Material.Glass, arena)
 	glassN.Transparency = 0.5
-	local glassS = part("GlassS", Vector3.new(114, 18, 1), Vector3.new(ax, 14, az + 57), glassCol, Enum.Material.Glass, arena)
+	local glassS = part("GlassS", Vector3.new(114, 18, 1), Vector3.new(ax, ay + 14, az + 57), glassCol, Enum.Material.Glass, arena)
 	glassS.Transparency = 0.5
 
 	-- Дах стадіону (Купол)
-	part("ArenaRoofBeam1", Vector3.new(120, 3, 4), Vector3.new(ax, 26, az), Color3.fromRGB(35, 40, 55), Enum.Material.SmoothPlastic, arena)
-	part("ArenaRoofBeam2", Vector3.new(4, 3, 120), Vector3.new(ax, 26, az), Color3.fromRGB(35, 40, 55), Enum.Material.SmoothPlastic, arena)
+	part("ArenaRoofBeam1", Vector3.new(120, 3, 4), Vector3.new(ax, ay + 26, az), Color3.fromRGB(35, 40, 55), Enum.Material.SmoothPlastic, arena)
+	part("ArenaRoofBeam2", Vector3.new(4, 3, 120), Vector3.new(ax, ay + 26, az), Color3.fromRGB(35, 40, 55), Enum.Material.SmoothPlastic, arena)
 
 	-- ── 2. РИНГУВАННЯ ТА КАНИ ─────────────────────────────────
-	part("RingBase", Vector3.new(46, 2, 46), Vector3.new(ax, 1, az), Color3.fromRGB(30, 15, 15), Enum.Material.SmoothPlastic, arena)
-	part("RingTop", Vector3.new(42, 0.5, 42), Vector3.new(ax, 2.25, az), Color3.fromRGB(50, 25, 25), Enum.Material.Fabric, arena)
+	part("RingBase", Vector3.new(46, 2, 46), Vector3.new(ax, ay + 1, az), Color3.fromRGB(30, 15, 15), Enum.Material.SmoothPlastic, arena)
+	part("RingTop", Vector3.new(42, 0.5, 42), Vector3.new(ax, ay + 2.25, az), Color3.fromRGB(50, 25, 25), Enum.Material.Fabric, arena)
 
 	for height = 3.5, 5.5, 1 do
-		part("RopeN_"..height, Vector3.new(44, 0.3, 0.3), Vector3.new(ax, height, az - 21), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
-		part("RopeS_"..height, Vector3.new(44, 0.3, 0.3), Vector3.new(ax, height, az + 21), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
-		part("RopeW_"..height, Vector3.new(0.3, 0.3, 44), Vector3.new(ax - 21, height, az), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
-		part("RopeE_"..height, Vector3.new(0.3, 0.3, 44), Vector3.new(ax + 21, height, az), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
+		part("RopeN_"..height, Vector3.new(44, 0.3, 0.3), Vector3.new(ax, ay + height, az - 21), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
+		part("RopeS_"..height, Vector3.new(44, 0.3, 0.3), Vector3.new(ax, ay + height, az + 21), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
+		part("RopeW_"..height, Vector3.new(0.3, 0.3, 44), Vector3.new(ax - 21, ay + height, az), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
+		part("RopeE_"..height, Vector3.new(0.3, 0.3, 44), Vector3.new(ax + 21, ay + height, az), Color3.fromRGB(255, 50, 50), Enum.Material.SmoothPlastic, arena)
 	end
 
-	local ringCorners = { Vector3.new(ax - 21, 4, az - 21), Vector3.new(ax + 21, 4, az - 21), Vector3.new(ax - 21, 4, az + 21), Vector3.new(ax + 21, 4, az + 21) }
+	local ringCorners = { Vector3.new(ax - 21, ay + 4, az - 21), Vector3.new(ax + 21, ay + 4, az - 21), Vector3.new(ax - 21, ay + 4, az + 21), Vector3.new(ax + 21, ay + 4, az + 21) }
 	for i, pos in ipairs(ringCorners) do
 		local post = part("RingPost_"..i, Vector3.new(2.5, 8, 2.5), pos, Color3.fromRGB(200, 30, 30), Enum.Material.Neon, arena)
 		pointLight(post, Color3.fromRGB(255, 40, 40), 20, 2.5)
 		ball("PostCap_"..i, 1.5, pos + Vector3.new(0, 4.5, 0), Color3.fromRGB(255, 80, 30), Enum.Material.Neon, arena)
 	end
 
-	-- ── 3. СПАВН ПЛАТФОРМИ ───────────────────────────
-	local p1Pad = part("P1_SpawnPad", Vector3.new(8, 0.6, 8), Vector3.new(ax - 10, 2.8, az), Color3.fromRGB(46, 204, 113), Enum.Material.Neon, arena)
-	sign3D("🟢 PLAYER", p1Pad, Vector3.new(0, 3, 0), 14, Color3.fromRGB(46, 204, 113))
+	-- ── 3. ТРИБУНИ ДЛЯ ГЛЯДАЧІВ (Stadium Stands) ──────────────
+	local standColor = Color3.fromRGB(20, 22, 30)
+	for tier = 1, 4 do
+		local yOff = tier * 2
+		local dist = 24 + (tier * 4)
+		part("StandN_"..tier, Vector3.new(60, 2, 4), Vector3.new(ax, ay + yOff, az - dist), standColor, Enum.Material.DiamondPlate, arena)
+		part("StandS_"..tier, Vector3.new(60, 2, 4), Vector3.new(ax, ay + yOff, az + dist), standColor, Enum.Material.DiamondPlate, arena)
+		part("StandW_"..tier, Vector3.new(4, 2, 60), Vector3.new(ax - dist, ay + yOff, az), standColor, Enum.Material.DiamondPlate, arena)
+		part("StandE_"..tier, Vector3.new(4, 2, 60), Vector3.new(ax + dist, ay + yOff, az), standColor, Enum.Material.DiamondPlate, arena)
+	end
 
-	local p2Pad = part("P2_SpawnPad", Vector3.new(8, 0.6, 8), Vector3.new(ax + 10, 2.8, az), Color3.fromRGB(231, 76, 60), Enum.Material.Neon, arena)
-	sign3D("🔴 OPPONENT", p2Pad, Vector3.new(0, 3, 0), 14, Color3.fromRGB(231, 76, 60))
-
-	-- ── 4. ТРИБУНИ ПО КОЛУ (360° CIRCULAR TRIBUNES) ──────────────────
+	-- ── 4. НАТОВП НІП (Spectator NPCs) ──────────────────────
 	local crowdFolder = Instance.new("Folder")
 	crowdFolder.Name = "SpectatorCrowd"
 	crowdFolder.Parent = arena
-
 	local spectatorDataList = {}
-	local fanColors = { Color3.fromRGB(231, 76, 60), Color3.fromRGB(52, 152, 219), Color3.fromRGB(241, 196, 15), Color3.fromRGB(155, 89, 182), Color3.fromRGB(46, 204, 113) }
-
-	-- 4 Сторони трибун (Захід, Схід, Північ, Південь)
-	for i = 0, 3 do
-		-- West Tribunes
-		part("TribW_"..i, Vector3.new(6, 2.5 + i * 0.8, 70), Vector3.new(ax - 35 - i * 3, 1.25 + i * 1.5, az), Color3.fromRGB(35 + i * 5, 38 + i * 5, 50), Enum.Material.SmoothPlastic, arena)
-		-- East Tribunes
-		part("TribE_"..i, Vector3.new(6, 2.5 + i * 0.8, 70), Vector3.new(ax + 35 + i * 3, 1.25 + i * 1.5, az), Color3.fromRGB(35 + i * 5, 38 + i * 5, 50), Enum.Material.SmoothPlastic, arena)
-		-- North Tribunes
-		part("TribN_"..i, Vector3.new(70, 2.5 + i * 0.8, 6), Vector3.new(ax, 1.25 + i * 1.5, az - 35 - i * 3), Color3.fromRGB(35 + i * 5, 38 + i * 5, 50), Enum.Material.SmoothPlastic, arena)
-		-- South Tribunes
-		part("TribS_"..i, Vector3.new(70, 2.5 + i * 0.8, 6), Vector3.new(ax, 1.25 + i * 1.5, az + 35 + i * 3), Color3.fromRGB(35 + i * 5, 38 + i * 5, 50), Enum.Material.SmoothPlastic, arena)
-	end
-
-	-- ── 5. СПАВН 24 АНІМОВАНИХ ВБОЛІВАЛЬНИКІВ (SPECTATOR CROWD NPCs) ───────────
+	local npcColors = {Color3.fromRGB(180, 50, 50), Color3.fromRGB(50, 100, 180), Color3.fromRGB(60, 180, 80), Color3.fromRGB(200, 150, 50), Color3.fromRGB(150, 50, 150)}
 	local npcIdx = 1
-	-- Західна сторона
-	for z = -25, 25, 10 do
-		local pos = Vector3.new(ax - 38, 3.5, az + z)
-		local npcData = createSpectatorNPC("Fan_W_"..npcIdx, pos, fanColors[math.random(1, #fanColors)], crowdFolder)
-		table.insert(spectatorDataList, npcData)
-		npcIdx = npcIdx + 1
-	end
-	-- Східна сторона
-	for z = -25, 25, 10 do
-		local pos = Vector3.new(ax + 38, 3.5, az + z)
-		local npcData = createSpectatorNPC("Fan_E_"..npcIdx, pos, fanColors[math.random(1, #fanColors)], crowdFolder)
-		table.insert(spectatorDataList, npcData)
-		npcIdx = npcIdx + 1
-	end
-	-- Північна сторона
-	for x = -25, 25, 10 do
-		local pos = Vector3.new(ax + x, 3.5, az - 38)
-		local npcData = createSpectatorNPC("Fan_N_"..npcIdx, pos, fanColors[math.random(1, #fanColors)], crowdFolder)
-		table.insert(spectatorDataList, npcData)
-		npcIdx = npcIdx + 1
-	end
-	-- Південна сторона
-	for x = -25, 25, 10 do
-		local pos = Vector3.new(ax + x, 3.5, az + 38)
-		local npcData = createSpectatorNPC("Fan_S_"..npcIdx, pos, fanColors[math.random(1, #fanColors)], crowdFolder)
-		table.insert(spectatorDataList, npcData)
-		npcIdx = npcIdx + 1
+
+	for tier = 1, 4 do
+		local yOff = tier * 2 + 1
+		local dist = 24 + (tier * 4)
+		for xOff = -25, 25, 6 do
+			if math.random() > 0.3 then
+				local npcData = createSpectatorNPC("Fan_"..npcIdx, Vector3.new(ax + xOff, ay + yOff, az - dist), npcColors[math.random(1, #npcColors)], crowdFolder)
+				table.insert(spectatorDataList, npcData)
+				npcIdx += 1
+			end
+			if math.random() > 0.3 then
+				local npcData = createSpectatorNPC("Fan_"..npcIdx, Vector3.new(ax + xOff, ay + yOff, az + dist), npcColors[math.random(1, #npcColors)], crowdFolder)
+				table.insert(spectatorDataList, npcData)
+				npcIdx += 1
+			end
+		end
 	end
 
-	-- 🌀 ТРИВАЛИЙ ЦИКЛ АНІМАЦІЇ НАВТОВПУ ВБОЛІВАЛЬНИКІВ (Підстрибування, Махання руками)
 	task.spawn(function()
 		while arena and arena.Parent do
 			local t = os.clock()
@@ -669,7 +647,6 @@ local function buildArena()
 				if npc.model and npc.model.Parent and npc.torso and npc.torso.Parent then
 					local jumpOffset = math.abs(math.sin(t * 6 + (npc.basePos.X % 5))) * 0.8
 					local waveAngle = math.sin(t * 8 + (npc.basePos.Z % 7)) * 0.6
-
 					npc.torso.CFrame = CFrame.new(npc.basePos + Vector3.new(0, 1.5 + jumpOffset, 0))
 					if npc.lArm and npc.lArm.Parent then
 						npc.lArm.CFrame = CFrame.new(npc.basePos + Vector3.new(-1.4, 2.2 + jumpOffset, 0)) * CFrame.Angles(math.rad(140) + waveAngle, 0, 0)
@@ -679,96 +656,35 @@ local function buildArena()
 					end
 				end
 			end
-			task.wait(0.03)
-		end
-	end)
-
-	-- ── 6. ПРОЖЕКТОРИ ТА ВИВІСКА ──────────────────────────
-	local spotPositions = { Vector3.new(ax - 20, 24, az - 20), Vector3.new(ax + 20, 24, az - 20), Vector3.new(ax - 20, 24, az + 20), Vector3.new(ax + 20, 24, az + 20) }
-	for i, pos in ipairs(spotPositions) do
-		local spotMount = part("SpotMount_"..i, Vector3.new(3, 2, 3), pos, Color3.fromRGB(40, 40, 50), Enum.Material.SmoothPlastic, arena)
-		spotLight(spotMount, Color3.fromRGB(255, 240, 220), 45, 55, 3)
-	end
-
-	local arenaSignPost = part("ArenaSignPost", Vector3.new(3, 12, 3), Vector3.new(ax, 6, az - 47), Color3.fromRGB(180, 25, 25), Enum.Material.SmoothPlastic, arena)
-	sign3D("⚔️ FIGHT CLUB ARENA", arenaSignPost, Vector3.new(0, 8, 0), 28, Color3.fromRGB(255, 215, 0))
-
-	-- ── 7. MATCHMAKING PAD ─────────────────────────────────
-	local mmPad = part("MatchmakingPad", Vector3.new(12, 1, 12), Vector3.new(ax, 0.5, az + 35), Color3.fromRGB(155, 89, 182), Enum.Material.Neon, arena)
-	part("MatchmakingPadRing", Vector3.new(15, 0.3, 15), Vector3.new(ax, 0.15, az + 35), Color3.fromRGB(15, 15, 25), Enum.Material.SmoothPlastic, arena).CanCollide = false
-	particles(mmPad, Color3.fromRGB(155, 89, 182), 30, 4, 0.5, 2)
-	pointLight(mmPad, Color3.fromRGB(155, 89, 182), 30, 2)
-
-	local mmPrompt = Instance.new("ProximityPrompt")
-	mmPrompt.ActionText           = "Find Opponent"
-	mmPrompt.ObjectText           = "⚔️ Matchmaking"
-	mmPrompt.MaxActivationDistance = 14
-	mmPrompt.HoldDuration         = 1
-	mmPrompt.Parent               = mmPad
-
-	sign3D("⚔️ STEP HERE TO FIGHT", mmPad, Vector3.new(0, 5, 0), 18, Color3.fromRGB(200, 150, 255))
-
-	-- ── 8. DRAMATIC FOG/STEAM COLUMNS ────────────────────────────
-	local fogPositions = {
-		Vector3.new(ax - 20, 0.5, az - 20),
-		Vector3.new(ax + 20, 0.5, az - 20),
-		Vector3.new(ax - 20, 0.5, az + 20),
-		Vector3.new(ax + 20, 0.5, az + 20),
-	}
-	for i, fPos in ipairs(fogPositions) do
-		local fogPart = Instance.new("Part")
-		fogPart.Name = "FogColumn_" .. i
-		fogPart.Size = Vector3.new(3, 1, 3)
-		fogPart.Position = fPos
-		fogPart.Transparency = 1
-		fogPart.Anchored = true
-		fogPart.CanCollide = false
-		fogPart.Parent = arena
-
-		local fogEmitter = Instance.new("ParticleEmitter")
-		fogEmitter.Texture = "rbxassetid://258123012"
-		fogEmitter.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50), Color3.fromRGB(80, 20, 20))
-		fogEmitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(0.5, 6), NumberSequenceKeypoint.new(1, 8)})
-		fogEmitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.5, 0.75), NumberSequenceKeypoint.new(1, 1)})
-		fogEmitter.Lifetime = NumberRange.new(3, 5)
-		fogEmitter.Rate = 8
-		fogEmitter.Speed = NumberRange.new(1, 3)
-		fogEmitter.SpreadAngle = Vector2.new(20, 20)
-		fogEmitter.Rotation = NumberRange.new(-180, 180)
-		fogEmitter.RotSpeed = NumberRange.new(-30, 30)
-		fogEmitter.LightEmission = 0.15
-		fogEmitter.Parent = fogPart
-
-		-- Red underglow
-		local redGlow = Instance.new("PointLight")
-		redGlow.Color = Color3.fromRGB(255, 40, 20)
-		redGlow.Brightness = 3
-		redGlow.Range = 20
-		redGlow.Parent = fogPart
-	end
-
-	-- ── 9. ANIMATED RING ROPES GLOW ───────────────────────────
-	task.spawn(function()
-		local ropeGlowParts = {}
-		for _, child in ipairs(arena:GetChildren()) do
-			if child:IsA("BasePart") and child.Name:match("^Rope") then
-				table.insert(ropeGlowParts, child)
-			end
-		end
-		while arena and arena.Parent do
-			local t = os.clock()
-			for _, rope in ipairs(ropeGlowParts) do
-				local pulse = 0.3 + 0.3 * math.sin(t * 3 + (rope.Position.X % 10))
-				rope.Transparency = pulse
-			end
 			task.wait(0.05)
 		end
 	end)
 
-	-- ── Teleport Back to Hub ──────────────────────────
-	teleportPad("TP_ToHub_FromArena", Vector3.new(ax, 0.5, az - 35), Color3.fromRGB(0, 170, 255), "🔙 Return to Hub", arena)
+	-- ── 5. LIGHTING & EFFECTS ──────────────────────────────
+	local rLight = part("RingLightAnchor", Vector3.new(12, 1, 12), Vector3.new(ax, ay + 25, az), Color3.fromRGB(10, 10, 15), Enum.Material.SmoothPlastic, arena)
+	spotLight(rLight, Color3.fromRGB(255, 240, 220), 45, 90, 4)
 
-	print("[MapManager] ✅ Enclosed Fight Club Arena built with 360° Spectator Crowd!")
+	local screen = part("ScreenN", Vector3.new(30, 12, 1), Vector3.new(ax, ay + 18, az - 56), Color3.fromRGB(10, 10, 15), Enum.Material.Neon, arena)
+	sign3D("FIGHT CLUB", screen, Vector3.new(0, 0, 0), 24, Color3.fromRGB(255, 50, 50), 100)
+
+	-- ── 6. СПАВН ПЛАТФОРМИ ───────────────────────────
+	local p1Pad = part("P1_SpawnPad", Vector3.new(8, 0.6, 8), Vector3.new(ax - 10, ay + 2.8, az), Color3.fromRGB(46, 204, 113), Enum.Material.Neon, arena)
+	sign3D("🟢 PLAYER 1", p1Pad, Vector3.new(0, 3, 0), 14, Color3.fromRGB(46, 204, 113))
+	local p2Pad = part("P2_SpawnPad", Vector3.new(8, 0.6, 8), Vector3.new(ax + 10, ay + 2.8, az), Color3.fromRGB(231, 76, 60), Enum.Material.Neon, arena)
+	sign3D("🔴 PLAYER 2", p2Pad, Vector3.new(0, 3, 0), 14, Color3.fromRGB(231, 76, 60))
+
+	-- Smoke
+	local smoke1 = part("Smoke1", Vector3.new(2, 0.5, 2), Vector3.new(ax - 10, ay + 0.5, az + 25), Color3.fromRGB(0,0,0), Enum.Material.SmoothPlastic, arena); smoke1.Transparency = 1
+	particles(smoke1, Color3.fromRGB(200,200,200), 10, 1.5, 3, 4)
+	local smoke2 = part("Smoke2", Vector3.new(2, 0.5, 2), Vector3.new(ax + 10, ay + 0.5, az + 25), Color3.fromRGB(0,0,0), Enum.Material.SmoothPlastic, arena); smoke2.Transparency = 1
+	particles(smoke2, Color3.fromRGB(200,200,200), 10, 1.5, 3, 4)
+
+	print("[MapManager] ✅ Isolated Arena generated for Battle " .. battleId)
+	return {
+		Folder = arena,
+		P1_Pos = Vector3.new(ax - 10, ay + 4, az),
+		P2_Pos = Vector3.new(ax + 10, ay + 4, az)
+	}
 end
 
 -- ════════════════════════════════════════════════════════
@@ -785,12 +701,6 @@ function MapManager.InitializeMap()
 
 	local ok2, err2 = pcall(buildHub)
 	if not ok2 then warn("[MapManager] ❌ Hub ПОМИЛКА: " .. tostring(err2)) end
-
-	local ok3, err3 = pcall(buildCareZone)
-	if not ok3 then warn("[MapManager] ❌ CareZone ПОМИЛКА: " .. tostring(err3)) end
-
-	local ok4, err4 = pcall(buildArena)
-	if not ok4 then warn("[MapManager] ❌ Arena ПОМИЛКА: " .. tostring(err4)) end
 
 	-- Аварійний спавн якщо Hub не створився
 	if not Workspace:FindFirstChild("Hub") then
@@ -813,7 +723,7 @@ function MapManager.InitializeMap()
 	end
 
 	print("══════════════════════════════════════════════")
-	print("[MapManager] 🎉 Ініціалізація карти завершена!")
+	print("[MapManager] 🎉 Ініціалізація базової карти завершена!")
 	print("══════════════════════════════════════════════")
 end
 

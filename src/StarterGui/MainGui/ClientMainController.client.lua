@@ -446,9 +446,43 @@ task.spawn(function()
 			brainCellsVal.Changed:Connect(updateCurrency)
 			updateCurrency()
 		end
+		end)
 	end
 end)
 
+-- ═══════════════════════════════════════════════════════
+--  DUEL SYSTEM (Accept / Decline via SetCore)
+-- ═══════════════════════════════════════════════════════
+
+local StarterGui = game:GetService("StarterGui")
+local DuelRequestEvent = EventsFolder:WaitForChild("DuelRequest", 10)
+local DuelRespondEvent = EventsFolder:WaitForChild("DuelRespond", 10)
+
+if DuelRequestEvent and DuelRespondEvent then
+	DuelRequestEvent.OnClientEvent:Connect(function(senderName)
+		local bindableEvent = Instance.new("BindableEvent")
+		bindableEvent.Event:Connect(function(response)
+			if response == "Accept" then
+				DuelRespondEvent:FireServer(true)
+			else
+				DuelRespondEvent:FireServer(false)
+			end
+			bindableEvent:Destroy()
+		end)
+		
+		-- Use Roblox CoreGui Notification System
+		pcall(function()
+			StarterGui:SetCore("SendNotification", {
+				Title = "Duel Request!",
+				Text = senderName .. " challenged you to a duel!",
+				Duration = 10,
+				Button1 = "Accept",
+				Button2 = "Decline",
+				Callback = bindableEvent
+			})
+		end)
+	end)
+end
 -- Async Server Events Binding
 task.spawn(function()
 	if not EventsFolder then
