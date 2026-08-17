@@ -203,12 +203,55 @@ teamPanel.Visible=false; teamPanel.Parent=main; corner(teamPanel,16)
 stroke(teamPanel, Color3.fromRGB(255,215,0), 2)
 
 local teamTitle = Instance.new("TextLabel")
-teamTitle.Size=UDim2.new(1,0,0,40); teamTitle.BackgroundTransparency=1
-teamTitle.Text="⚔️ SELECT YOUR TEAM (up to 3 Brainrots)"; teamTitle.TextColor3=Color3.fromRGB(255,215,0)
-teamTitle.TextSize=16; teamTitle.Font=Enum.Font.GothamBold; teamTitle.Parent=teamPanel
+teamTitle.Size=UDim2.new(1,0,0,28); teamTitle.BackgroundTransparency=1
+teamTitle.Text="⚔️ SELECT BATTLE MODE & TEAM"; teamTitle.TextColor3=Color3.fromRGB(255,215,0)
+teamTitle.TextSize=14; teamTitle.Font=Enum.Font.GothamBold; teamTitle.Parent=teamPanel
+
+-- Battle mode selector: 1v1 or 3v3
+local selectedTeamSize = 3
+local modeFrame = Instance.new("Frame")
+modeFrame.Size=UDim2.new(1,-20,0,32); modeFrame.Position=UDim2.new(0,10,0,28)
+modeFrame.BackgroundTransparency=1; modeFrame.Parent=teamPanel
+
+local btn1v1 = Instance.new("TextButton")
+btn1v1.Size=UDim2.new(0,120,0,28); btn1v1.Position=UDim2.new(0,0,0,0)
+btn1v1.BackgroundColor3=Color3.fromRGB(40,44,58); btn1v1.TextColor3=Color3.fromRGB(200,200,220)
+btn1v1.Text="🥊 1 vs 1"; btn1v1.TextSize=13; btn1v1.Font=Enum.Font.GothamBold
+btn1v1.Parent=modeFrame; corner(btn1v1,8)
+local stroke1v1 = stroke(btn1v1, Color3.fromRGB(60,70,90), 1)
+
+local btn3v3 = Instance.new("TextButton")
+btn3v3.Size=UDim2.new(0,120,0,28); btn3v3.Position=UDim2.new(0,130,0,0)
+btn3v3.BackgroundColor3=Color3.fromRGB(55,65,85); btn3v3.TextColor3=Color3.fromRGB(255,215,0)
+btn3v3.Text="⚔️ 3 vs 3"; btn3v3.TextSize=13; btn3v3.Font=Enum.Font.GothamBold
+btn3v3.Parent=modeFrame; corner(btn3v3,8)
+local stroke3v3 = stroke(btn3v3, Color3.fromRGB(255,215,0), 1.5)
+
+local function setMode(size)
+	selectedTeamSize = size
+	if size == 1 then
+		btn1v1.BackgroundColor3 = Color3.fromRGB(55,65,85)
+		stroke1v1.Color = Color3.fromRGB(255,215,0)
+		btn1v1.TextColor3 = Color3.fromRGB(255,215,0)
+		btn3v3.BackgroundColor3 = Color3.fromRGB(40,44,58)
+		stroke3v3.Color = Color3.fromRGB(60,70,90)
+		btn3v3.TextColor3 = Color3.fromRGB(200,200,220)
+	else
+		btn3v3.BackgroundColor3 = Color3.fromRGB(55,65,85)
+		stroke3v3.Color = Color3.fromRGB(255,215,0)
+		btn3v3.TextColor3 = Color3.fromRGB(255,215,0)
+		btn1v1.BackgroundColor3 = Color3.fromRGB(40,44,58)
+		stroke1v1.Color = Color3.fromRGB(60,70,90)
+		btn1v1.TextColor3 = Color3.fromRGB(200,200,220)
+	end
+end
+setMode(3) -- default 3v3
+
+btn1v1.MouseButton1Click:Connect(function() setMode(1); renderTeamSelect() end)
+btn3v3.MouseButton1Click:Connect(function() setMode(3); renderTeamSelect() end)
 
 local teamScroll = Instance.new("ScrollingFrame")
-teamScroll.Size=UDim2.new(1,-20,1,-100); teamScroll.Position=UDim2.new(0,10,0,42)
+teamScroll.Size=UDim2.new(1,-20,1,-130); teamScroll.Position=UDim2.new(0,10,0,64)
 teamScroll.BackgroundTransparency=1; teamScroll.ScrollBarThickness=4
 teamScroll.CanvasSize=UDim2.new(0,0,0,0); teamScroll.Parent=teamPanel
 local grid = Instance.new("UIGridLayout")
@@ -297,9 +340,9 @@ local function renderTeamSelect()
 		local cfg = ItemDB and ItemDB.GetItem(unit.ItemId)
 		local name = cfg and cfg.Name or unit.ItemId
 
-		-- Auto-select first 3 units
+		-- Auto-select first N units based on mode
 		local isAutoSelected = false
-		if #selectedTeamUUIDs < 3 then
+		if #selectedTeamUUIDs < selectedTeamSize then
 			table.insert(selectedTeamUUIDs, unit.UUID)
 			isAutoSelected = true
 		end
@@ -327,7 +370,7 @@ local function renderTeamSelect()
 					found = true; break
 				end
 			end
-			if not found and #selectedTeamUUIDs < 3 then
+			if not found and #selectedTeamUUIDs < selectedTeamSize then
 				table.insert(selectedTeamUUIDs, unit.UUID)
 				btn.BackgroundColor3 = classColor or Color3.fromRGB(40,80,50)
 				btnStroke.Color = Color3.fromRGB(46,204,113)
@@ -350,7 +393,7 @@ startBattleBtn.MouseButton1Click:Connect(function()
 	local StartBattle = Events and Events:FindFirstChild("StartBattle")
 	if StartBattle then
 		local ok, res = pcall(function()
-			return StartBattle:InvokeServer(selectedTeamUUIDs)
+			return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
 		end)
 		if ok and res and res.Success then
 			teamPanel.Visible = false

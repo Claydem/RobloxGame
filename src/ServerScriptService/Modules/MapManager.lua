@@ -695,7 +695,7 @@ local function buildArena()
 	sign3D("⚔️ STEP HERE TO FIGHT", mmPad, Vector3.new(0, 5, 0), 18, Color3.fromRGB(200, 150, 255))
 
 	-- ── Teleport Back to Hub ──────────────────────────
-	teleportPad("TP_ToHub_FromArena", Vector3.new(ax - 45, 0.5, az), Color3.fromRGB(0, 170, 255), "🔙 Return to Hub", arena)
+	teleportPad("TP_ToHub_FromArena", Vector3.new(ax, 0.5, az - 35), Color3.fromRGB(0, 170, 255), "🔙 Return to Hub", arena)
 
 	print("[MapManager] ✅ Enclosed Fight Club Arena built with 360° Spectator Crowd!")
 end

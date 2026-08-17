@@ -566,14 +566,15 @@ local function getPlayerTop3AvgLevel(player)
 	return count > 0 and math.max(1, math.floor(sum / count)) or 1
 end
 
-local function buildTeam(player, teamUUIDs)
+local function buildTeam(player, teamUUIDs, teamSize)
+	teamSize = teamSize or 3
 	local DM   = getDataManager()
 	local data = DM.GetPlayerData(player)
 	if not data or not data.Inventory then return nil end
 
 	local team = {}
 	for _, uuid in ipairs(teamUUIDs) do
-		if #team >= 3 then break end
+		if #team >= teamSize then break end
 		for _, inv in ipairs(data.Inventory) do
 			if inv.UUID == uuid then
 				local stats = ItemDatabase.GetUnitStats(inv)
@@ -599,14 +600,15 @@ local function buildTeam(player, teamUUIDs)
 	return #team > 0 and team or nil
 end
 
-local function buildBotTeam(player)
+local function buildBotTeam(player, teamSize)
+	teamSize = teamSize or 3
 	local avgLevel = getPlayerTop3AvgLevel(player)
 	local allItems = ItemDatabase.GetAllItemIds and ItemDatabase.GetAllItemIds()
 	local classes = { "Normal", "Lava", "Oro", "Hacker", "Galaxia", "Diamante" }
 
 	local team = {}
 	if allItems and #allItems > 0 then
-		for _ = 1, 3 do
+		for _ = 1, teamSize do
 			local id = allItems[math.random(1, #allItems)]
 			local botLevel = math.clamp(avgLevel + math.random(-3, 3), 1, 100)
 			local botClass = classes[math.random(1, #classes)]
@@ -645,7 +647,8 @@ end
 --  PUBLIC: START BOT BATTLE
 -- ═══════════════════════════════════════════════════════
 
-function BattleService.StartBotBattle(player, teamUUIDs)
+function BattleService.StartBotBattle(player, teamUUIDs, teamSize)
+	teamSize = math.clamp(teamSize or 3, 1, 3)
 	if playerBattles[player] then
 		return { Success = false, Error = "Ви вже в бою!" }
 	end
@@ -656,12 +659,12 @@ function BattleService.StartBotBattle(player, teamUUIDs)
 		return { Success = false, NeedTeam = true, Inventory = data and data.Inventory or {} }
 	end
 
-	local pTeam = buildTeam(player, teamUUIDs)
+	local pTeam = buildTeam(player, teamUUIDs, teamSize)
 	if not pTeam then
 		return { Success = false, Error = "Не вдалося зібрати команду!" }
 	end
 
-	local botTeam = buildBotTeam(player)
+	local botTeam = buildBotTeam(player, teamSize)
 	teleportToArena(player)
 
 	local battleId = HttpService:GenerateGUID(false)
@@ -754,8 +757,8 @@ _G.BattleService = BattleService
 local events = ReplicatedStorage:WaitForChild("Events")
 
 -- Start battle
-events:WaitForChild("StartBattle").OnServerInvoke = function(player, teamUUIDs)
-	return BattleService.StartBotBattle(player, teamUUIDs)
+events:WaitForChild("StartBattle").OnServerInvoke = function(player, teamUUIDs, teamSize)
+	return BattleService.StartBotBattle(player, teamUUIDs, teamSize)
 end
 
 -- QTE results from client (attack & defense data combined)
