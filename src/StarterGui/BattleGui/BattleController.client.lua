@@ -88,31 +88,62 @@ end
 local SoundService = game:GetService("SoundService")
 
 local SOUND_IDS = {
-	Click      = "rbxassetid://12221967", -- UI Click
-	Mash       = "rbxassetid://12221967", -- Mash button
-	Hit        = "rbxassetid://131237241", -- Classic Punch
-	CritHit    = "rbxassetid://131237241", -- Heavy Crit Punch
-	Block      = "rbxassetid://138090596", -- Shield / Metal Block
-	Swoosh     = "rbxassetid://12222200", -- Air Swoosh Lunge
-	Victory    = "rbxassetid://12221967", -- Victory Bell
-	Defeat     = "rbxassetid://12221967", -- Defeat Click
-	Death      = "rbxassetid://131237241", -- Unit KO Punch
-	FightVoice = "rbxassetid://12221967", -- Start Bell
+	Click      = "rbxassetid://6895079853",  -- Clean UI Click
+	Mash       = "rbxassetid://6895079853",  -- Button Tap
+	Hit        = "rbxassetid://5690279431",  -- Meaty Punch Impact
+	CritHit    = "rbxassetid://4612373239",  -- Heavy Explosion Hit
+	Block      = "rbxassetid://4612373077",  -- Metal Shield Clang
+	Swoosh     = "rbxassetid://3370874737",  -- Fast Air Whoosh
+	Victory    = "rbxassetid://1840854453",  -- Triumphant Brass Fanfare
+	Defeat     = "rbxassetid://1843463175",  -- Dark Defeat Chord
+	Death      = "rbxassetid://5690279431",  -- Heavy KO Punch
+	FightVoice = "rbxassetid://6895079853",  -- Round Start Bell
+	BurnSFX    = "rbxassetid://5765191300",  -- Fire Crackling
+	HealSFX    = "rbxassetid://4612373077",  -- Magic Heal Chime
+	GlitchSFX  = "rbxassetid://4612373239",  -- Digital Glitch
 }
 
 -- КОРИСТУВАЦЬКИЙ ЗВУК: вставте сюди ваш Asset ID після завантаження MP3 (наприклад "rbxassetid://123456789")
 local CUSTOM_USER_BGM_ID = ""
 
 local BGM_TRACKS = {
-	"rbxassetid://1839840134", -- Fast Combat Brass & Heavy Drums
-	"rbxassetid://9042530188", -- Cyberpunk Heavy Combat Beat
-	"rbxassetid://1837849285", -- Heavy Action Arena Battle
+	"rbxassetid://1839840134",  -- Aggressive Combat Orchestral
+	"rbxassetid://1837849285",  -- Dark Heavy Metal Arena
+	"rbxassetid://9042530188",  -- Cyberpunk Synth Combat
+	"rbxassetid://1847567364",  -- Epic Battle Drums & Brass
+	"rbxassetid://1846971179",  -- Intense Fighting Theme
 }
 
 local bgmSound = nil
 
 local function startBattleBGM()
-	return -- Музику тимчасово вимкнено за запитом, звуки ударів і кнопок залишаються!
+	-- Stop any existing BGM first
+	if bgmSound and bgmSound.Parent then
+		bgmSound:Stop()
+		bgmSound:Destroy()
+		bgmSound = nil
+	end
+
+	task.spawn(function()
+		local trackId
+		if CUSTOM_USER_BGM_ID and CUSTOM_USER_BGM_ID ~= "" then
+			trackId = CUSTOM_USER_BGM_ID
+		else
+			trackId = BGM_TRACKS[math.random(1, #BGM_TRACKS)]
+		end
+
+		local s = Instance.new("Sound")
+		s.Name = "BattleBGM"
+		s.SoundId = trackId
+		s.Volume = 0
+		s.Looped = true
+		s.PlaybackSpeed = 1.0
+		s.Parent = SoundService
+		bgmSound = s
+
+		pcall(function() s:Play() end)
+		tw(s, { Volume = 0.45 }, 1.5)
+	end)
 end
 
 local function stopBattleBGM()
@@ -563,55 +594,85 @@ resultLbl.TextSize=34; resultLbl.Font=Enum.Font.GothamBlack; resultLbl.ZIndex=11
 
 local function spawnImpactParticles(pos, isCrit, isBlock)
 	local arena = workspace:FindFirstChild("FightClubArena") or workspace
-	local part = Instance.new("Part")
-	part.Size = Vector3.new(0.5, 0.5, 0.5)
-	part.Position = pos
-	part.Transparency = 1
-	part.Anchored = true
-	part.CanCollide = false
-	part.Parent = arena
+	local anchor = Instance.new("Part")
+	anchor.Size = Vector3.new(0.5, 0.5, 0.5)
+	anchor.Position = pos
+	anchor.Transparency = 1
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.Parent = arena
 
-	-- 1. Sparks / Fire Emitter
+	-- 1. Sparks / Fire Emitter (enhanced)
 	local pe = Instance.new("ParticleEmitter")
 	pe.Texture = "rbxassetid://258121656"
 	pe.Rate = 0
-	pe.Speed = NumberRange.new(15, isCrit and 35 or 25)
-	pe.Lifetime = NumberRange.new(0.2, 0.5)
+	pe.Speed = NumberRange.new(18, isCrit and 45 or 30)
+	pe.Lifetime = NumberRange.new(0.25, 0.6)
 	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Drag = 3
 
 	if isBlock then
 		pe.Color = ColorSequence.new(Color3.fromRGB(80, 200, 255), Color3.fromRGB(255, 255, 255))
-		pe.LightEmission = 0.9
-		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 0)})
-	elseif isCrit then
-		pe.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 50, 0))
 		pe.LightEmission = 1.0
-		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 3.0), NumberSequenceKeypoint.new(1, 0)})
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2.0), NumberSequenceKeypoint.new(1, 0)})
+	elseif isCrit then
+		pe.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 30, 0))
+		pe.LightEmission = 1.0
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 3.5), NumberSequenceKeypoint.new(1, 0)})
 	else
 		pe.Color = ColorSequence.new(Color3.fromRGB(255, 180, 50), Color3.fromRGB(255, 60, 0))
-		pe.LightEmission = 0.7
-		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.8), NumberSequenceKeypoint.new(1, 0)})
+		pe.LightEmission = 0.8
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2.0), NumberSequenceKeypoint.new(1, 0)})
 	end
+	pe.Parent = anchor
+	pe:Emit(isCrit and 55 or isBlock and 30 or 25)
 
-	pe.Parent = part
-	pe:Emit(isCrit and 40 or isBlock and 25 or 20)
-
-	-- 2. Smoke Puff (for Hits & Crits)
+	-- 2. Smoke Cloud
 	if not isBlock then
 		local smoke = Instance.new("ParticleEmitter")
 		smoke.Texture = "rbxassetid://258123012"
 		smoke.Rate = 0
-		smoke.Speed = NumberRange.new(5, 12)
-		smoke.Lifetime = NumberRange.new(0.4, 0.8)
+		smoke.Speed = NumberRange.new(6, 14)
+		smoke.Lifetime = NumberRange.new(0.4, 1.0)
 		smoke.SpreadAngle = Vector2.new(180, 180)
-		smoke.Color = ColorSequence.new(Color3.fromRGB(80, 80, 80), Color3.fromRGB(30, 30, 30))
-		smoke.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1)})
-		smoke.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 4.0)})
-		smoke.Parent = part
-		smoke:Emit(15)
+		smoke.Color = ColorSequence.new(Color3.fromRGB(90, 60, 40), Color3.fromRGB(20, 20, 20))
+		smoke.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1)})
+		smoke.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2.0), NumberSequenceKeypoint.new(1, 5.0)})
+		smoke.Drag = 2
+		smoke.Parent = anchor
+		smoke:Emit(20)
 	end
 
-	task.delay(1.5, function() part:Destroy() end)
+	-- 3. Ground shockwave ring (expanding neon ring)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.3, 1, 1)
+	ring.CFrame = CFrame.new(pos - Vector3.new(0, 1.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Color = isCrit and Color3.fromRGB(255, 200, 0) or isBlock and Color3.fromRGB(80, 200, 255) or Color3.fromRGB(255, 120, 40)
+	ring.Material = Enum.Material.Neon
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.Transparency = 0.3
+	ring.Parent = arena
+
+	local ringTw = TweenService:Create(ring, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.3, isCrit and 30 or 18, isCrit and 30 or 18),
+		Transparency = 1
+	})
+	ringTw:Play()
+
+	-- 4. Flash point light
+	local flash = Instance.new("PointLight")
+	flash.Color = isCrit and Color3.fromRGB(255, 215, 0) or isBlock and Color3.fromRGB(80, 200, 255) or Color3.fromRGB(255, 150, 50)
+	flash.Brightness = isCrit and 8 or 4
+	flash.Range = isCrit and 40 or 25
+	flash.Parent = anchor
+	TweenService:Create(flash, TweenInfo.new(0.4), { Brightness = 0 }):Play()
+
+	task.delay(1.8, function()
+		anchor:Destroy()
+		ring:Destroy()
+	end)
 end
 
 -- ═══════════════════════════════════════════════════════

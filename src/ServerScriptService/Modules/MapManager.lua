@@ -190,8 +190,8 @@ local function setupLighting()
 
 	safeSet(Lighting, "Ambient", Color3.fromRGB(38, 38, 46))
 	safeSet(Lighting, "OutdoorAmbient", Color3.fromRGB(65, 65, 78))
-	safeSet(Lighting, "Brightness", 2.8)
-	safeSet(Lighting, "ClockTime", 14.5)
+	safeSet(Lighting, "Brightness", 3.2)
+	safeSet(Lighting, "ClockTime", 20.5)
 	safeSet(Lighting, "GeographicLatitude", 35)
 	safeSet(Lighting, "EnvironmentDiffuseScale", 0.6)
 	safeSet(Lighting, "EnvironmentSpecularScale", 0.6)
@@ -201,26 +201,26 @@ local function setupLighting()
 	-- Atmosphere
 	local atm = Lighting:FindFirstChildOfClass("Atmosphere")
 	if not atm then atm = Instance.new("Atmosphere"); atm.Parent = Lighting end
-	safeSet(atm, "Density", 0.28)
+	safeSet(atm, "Density", 0.35)
 	safeSet(atm, "Offset", 0.15)
-	safeSet(atm, "Color", Color3.fromRGB(170, 190, 230))
+	safeSet(atm, "Color", Color3.fromRGB(140, 155, 200))
 	safeSet(atm, "Decay", Color3.fromRGB(218, 218, 230))
 	safeSet(atm, "Glare", 0.15)
-	safeSet(atm, "Haze", 1.2)
+	safeSet(atm, "Haze", 2.0)
 
 	-- Bloom
 	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 	if not bloom then bloom = Instance.new("BloomEffect"); bloom.Parent = Lighting end
-	safeSet(bloom, "Intensity", 0.45)
-	safeSet(bloom, "Size", 36)
+	safeSet(bloom, "Intensity", 0.55)
+	safeSet(bloom, "Size", 42)
 	safeSet(bloom, "Threshold", 1.1)
 
 	-- Color Correction
 	local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
 	if not cc then cc = Instance.new("ColorCorrectionEffect"); cc.Parent = Lighting end
 	safeSet(cc, "Brightness", 0.04)
-	safeSet(cc, "Contrast", 0.18)
-	safeSet(cc, "Saturation", 0.3)
+	safeSet(cc, "Contrast", 0.25)
+	safeSet(cc, "Saturation", 0.35)
 	safeSet(cc, "TintColor", Color3.fromRGB(255, 252, 248))
 
 	-- Sun Rays
@@ -236,6 +236,11 @@ local function setupLighting()
 	safeSet(dof, "FocusDistance", 100)
 	safeSet(dof, "InFocusRadius", 50)
 	safeSet(dof, "NearIntensity", 0)
+
+	-- Blur Effect
+	local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+	if not blur then blur = Instance.new("BlurEffect"); blur.Parent = Lighting end
+	safeSet(blur, "Size", 2)
 
 	print("[MapManager] ✨ Lighting налаштовано!")
 end
@@ -554,6 +559,15 @@ local function buildArena()
 	part("ArenaFloor", Vector3.new(120, 4, 120), Vector3.new(ax, -2, az),
 		Color3.fromRGB(18, 20, 28), Enum.Material.DiamondPlate, arena)
 
+	-- Neon floor cross accent
+	part("ArenaFloorCrossX", Vector3.new(40, 0.15, 2), Vector3.new(ax, 0.08, az),
+		Color3.fromRGB(255, 30, 30), Enum.Material.Neon, arena).CanCollide = false
+	part("ArenaFloorCrossZ", Vector3.new(2, 0.15, 40), Vector3.new(ax, 0.08, az),
+		Color3.fromRGB(255, 30, 30), Enum.Material.Neon, arena).CanCollide = false
+	-- Outer ring glow
+	part("ArenaRingGlow", Vector3.new(48, 0.1, 48), Vector3.new(ax, 0.05, az),
+		Color3.fromRGB(180, 20, 20), Enum.Material.Neon, arena).CanCollide = false
+
 	-- 4 Високі закриті стіни з гартованого скла та сталі (Повний захист від випадіння)
 	local glassCol = Color3.fromRGB(40, 50, 70)
 	local wallN = part("EnclosedWallN", Vector3.new(120, 25, 3), Vector3.new(ax, 12.5, az - 58.5), Color3.fromRGB(25, 28, 38), Enum.Material.SmoothPlastic, arena)
@@ -693,6 +707,63 @@ local function buildArena()
 	mmPrompt.Parent               = mmPad
 
 	sign3D("⚔️ STEP HERE TO FIGHT", mmPad, Vector3.new(0, 5, 0), 18, Color3.fromRGB(200, 150, 255))
+
+	-- ── 8. DRAMATIC FOG/STEAM COLUMNS ────────────────────────────
+	local fogPositions = {
+		Vector3.new(ax - 20, 0.5, az - 20),
+		Vector3.new(ax + 20, 0.5, az - 20),
+		Vector3.new(ax - 20, 0.5, az + 20),
+		Vector3.new(ax + 20, 0.5, az + 20),
+	}
+	for i, fPos in ipairs(fogPositions) do
+		local fogPart = Instance.new("Part")
+		fogPart.Name = "FogColumn_" .. i
+		fogPart.Size = Vector3.new(3, 1, 3)
+		fogPart.Position = fPos
+		fogPart.Transparency = 1
+		fogPart.Anchored = true
+		fogPart.CanCollide = false
+		fogPart.Parent = arena
+
+		local fogEmitter = Instance.new("ParticleEmitter")
+		fogEmitter.Texture = "rbxassetid://258123012"
+		fogEmitter.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50), Color3.fromRGB(80, 20, 20))
+		fogEmitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(0.5, 6), NumberSequenceKeypoint.new(1, 8)})
+		fogEmitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.5, 0.75), NumberSequenceKeypoint.new(1, 1)})
+		fogEmitter.Lifetime = NumberRange.new(3, 5)
+		fogEmitter.Rate = 8
+		fogEmitter.Speed = NumberRange.new(1, 3)
+		fogEmitter.SpreadAngle = Vector2.new(20, 20)
+		fogEmitter.Rotation = NumberRange.new(-180, 180)
+		fogEmitter.RotSpeed = NumberRange.new(-30, 30)
+		fogEmitter.LightEmission = 0.15
+		fogEmitter.Parent = fogPart
+
+		-- Red underglow
+		local redGlow = Instance.new("PointLight")
+		redGlow.Color = Color3.fromRGB(255, 40, 20)
+		redGlow.Brightness = 3
+		redGlow.Range = 20
+		redGlow.Parent = fogPart
+	end
+
+	-- ── 9. ANIMATED RING ROPES GLOW ───────────────────────────
+	task.spawn(function()
+		local ropeGlowParts = {}
+		for _, child in ipairs(arena:GetChildren()) do
+			if child:IsA("BasePart") and child.Name:match("^Rope") then
+				table.insert(ropeGlowParts, child)
+			end
+		end
+		while arena and arena.Parent do
+			local t = os.clock()
+			for _, rope in ipairs(ropeGlowParts) do
+				local pulse = 0.3 + 0.3 * math.sin(t * 3 + (rope.Position.X % 10))
+				rope.Transparency = pulse
+			end
+			task.wait(0.05)
+		end
+	end)
 
 	-- ── Teleport Back to Hub ──────────────────────────
 	teleportPad("TP_ToHub_FromArena", Vector3.new(ax, 0.5, az - 35), Color3.fromRGB(0, 170, 255), "🔙 Return to Hub", arena)
