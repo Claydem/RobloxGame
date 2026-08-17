@@ -113,7 +113,7 @@ local CUSTOM_BATTLE_BGM_IDS = {
 local CUSTOM_BATTLE_BGM_START_TIME = 0
 
 -- 🔊 Гучність музики (робимо тихіше, щоб ефекти було краще чути)
-local CUSTOM_BATTLE_BGM_VOLUME = 0.15
+local CUSTOM_BATTLE_BGM_VOLUME = 0.25
 -- ====================================================================
 
 local bgmSound = nil
