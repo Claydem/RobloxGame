@@ -36,10 +36,10 @@ local DuelRequestEvent = getOrCreateEvent("DuelRequest")
 local DuelRespondEvent = getOrCreateEvent("DuelRespond")
 
 -- Додавання ProximityPrompt до нових персонажів
-Players.PlayerAdded:Connect(function(player)
-	player.CharacterAdded:Connect(function(char)
+local function setupPlayerPrompt(player)
+	local function attachPrompt(char)
 		local root = char:WaitForChild("HumanoidRootPart", 5)
-		if root then
+		if root and not root:FindFirstChildOfClass("ProximityPrompt") then
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.ActionText = "Challenge to Duel"
 			prompt.ObjectText = player.Name
@@ -50,14 +50,23 @@ Players.PlayerAdded:Connect(function(player)
 			
 			prompt.Triggered:Connect(function(sender)
 				if sender == player then return end
-				-- Відправляємо запит
 				pendingDuels[player.UserId] = sender.UserId
 				print("[DuelService] " .. sender.Name .. " challenged " .. player.Name)
 				DuelRequestEvent:FireClient(player, sender.Name)
 			end)
 		end
-	end)
-end)
+	end
+
+	if player.Character then
+		task.spawn(attachPrompt, player.Character)
+	end
+	player.CharacterAdded:Connect(attachPrompt)
+end
+
+Players.PlayerAdded:Connect(setupPlayerPrompt)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(setupPlayerPrompt, player)
+end
 
 -- Обробка відповіді від цілі
 DuelRespondEvent.OnServerEvent:Connect(function(player, response)

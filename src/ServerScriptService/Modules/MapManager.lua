@@ -178,6 +178,28 @@ local function teleportPad(name, position, color, labelText, parent)
 	return pad
 end
 
+local function createSpectatorNPC(name, pos, shirtColor, parent)
+	local model = Instance.new("Model")
+	model.Name = name
+	model.Parent = parent
+
+	local torso = part("Torso", Vector3.new(2, 2, 1), pos + Vector3.new(0, 1, 0), shirtColor, Enum.Material.SmoothPlastic, model)
+	local head = part("Head", Vector3.new(1.2, 1.2, 1.2), pos + Vector3.new(0, 2.6, 0), Color3.fromRGB(255, 220, 180), Enum.Material.SmoothPlastic, model)
+	head.Shape = Enum.PartType.Ball
+
+	local lArm = part("LeftArm", Vector3.new(0.8, 2, 0.8), pos + Vector3.new(-1.4, 1, 0), shirtColor, Enum.Material.SmoothPlastic, model)
+	local rArm = part("RightArm", Vector3.new(0.8, 2, 0.8), pos + Vector3.new(1.4, 1, 0), shirtColor, Enum.Material.SmoothPlastic, model)
+
+	model.PrimaryPart = torso
+	return {
+		model = model,
+		torso = torso,
+		lArm = lArm,
+		rArm = rArm,
+		basePos = pos
+	}
+end
+
 -- ════════════════════════════════════════════════════════
 --  LIGHTING UPGRADE
 -- ════════════════════════════════════════════════════════

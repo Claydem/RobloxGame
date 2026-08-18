@@ -669,12 +669,29 @@ resultLbl.Size=UDim2.new(0,600,0,80); resultLbl.Position=UDim2.new(0.5,-300,0.35
 resultLbl.BackgroundTransparency=1; resultLbl.TextColor3=Color3.fromRGB(255,215,0)
 resultLbl.TextSize=34; resultLbl.Font=Enum.Font.GothamBlack; resultLbl.ZIndex=11; resultLbl.Parent=resultOverlay
 
--- ═══════════════════════════════════════════════════════
---  3D PARTICLE EMITTER FX (Fire, Smoke, Sparks, Shield)
--- ═══════════════════════════════════════════════════════
+local function getArenaFolder()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		for _, child in ipairs(workspace:GetChildren()) do
+			if (child.Name:match("^Arena_") or child.Name == "FightClubArena") and child:IsA("Folder") then
+				local pad = child:FindFirstChild("P1_SpawnPad") or child:FindFirstChild("ArenaFloor")
+				if pad and (pad.Position - root.Position).Magnitude < 300 then
+					return child
+				end
+			end
+		end
+	end
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child.Name:match("^Arena_") or child.Name == "FightClubArena" then
+			return child
+		end
+	end
+	return workspace
+end
 
 local function spawnImpactParticles(pos, isCrit, isBlock)
-	local arena = workspace:FindFirstChild("FightClubArena") or workspace
+	local arena = getArenaFolder()
 	local anchor = Instance.new("Part")
 	anchor.Size = Vector3.new(0.5, 0.5, 0.5)
 	anchor.Position = pos
@@ -761,7 +778,7 @@ end
 -- ═══════════════════════════════════════════════════════
 
 local function animateLungeAttack(attackerSide, defenderSide, onImpactCallback)
-	local arena = workspace:FindFirstChild("FightClubArena")
+	local arena = getArenaFolder()
 	if not arena then if onImpactCallback then onImpactCallback() end return end
 
 	local atkPad = arena:FindFirstChild(attackerSide .. "_SpawnPad")
@@ -1145,12 +1162,16 @@ if Events then
 				local origCamType = Camera.CameraType
 				Camera.CameraType = Enum.CameraType.Scriptable
 
-				local ax, az = 200, 0
-				local arena = workspace:FindFirstChild("FightClubArena")
+				local arena = getArenaFolder()
 				if arena then
-					local startCF = CFrame.lookAt(Vector3.new(ax - 42, 14, az - 35), Vector3.new(ax - 30, 5, az))
-					local midCF   = CFrame.lookAt(Vector3.new(ax, 16, az + 42), Vector3.new(ax, 4, az))
-					local endCF   = CFrame.lookAt(Vector3.new(ax + 38, 12, az - 25), Vector3.new(ax, 3, az))
+					local p1Pad = arena:FindFirstChild("P1_SpawnPad")
+					local ax = p1Pad and (p1Pad.Position.X + 10) or 0
+					local ay = p1Pad and (p1Pad.Position.Y - 2.8) or 0
+					local az = p1Pad and p1Pad.Position.Z or 0
+
+					local startCF = CFrame.lookAt(Vector3.new(ax - 42, ay + 14, az - 35), Vector3.new(ax - 30, ay + 5, az))
+					local midCF   = CFrame.lookAt(Vector3.new(ax, ay + 16, az + 42), Vector3.new(ax, ay + 4, az))
+					local endCF   = CFrame.lookAt(Vector3.new(ax + 38, ay + 12, az - 25), Vector3.new(ax, ay + 3, az))
 
 					local startTime = os.clock()
 					while (os.clock() - startTime) < 2.5 do
@@ -1199,9 +1220,9 @@ if Events then
 
 			-- Lunge animation
 			animateLungeAttack(atkSide, defSide, function()
-				local arena = workspace:FindFirstChild("FightClubArena")
+				local arena = getArenaFolder()
 				local defPad = arena and arena:FindFirstChild(defSide .. "_SpawnPad")
-				local impactPos = defPad and (defPad.Position + Vector3.new(0, 3, 0)) or Vector3.new(200, 5, 0)
+				local impactPos = defPad and (defPad.Position + Vector3.new(0, 3, 0)) or (LocalPlayer.Character and LocalPlayer.Character:GetPivot().Position or Vector3.zero)
 
 				local isBlock = (data.BlockResult == "PERFECT_BLOCK")
 				local isCrit = (data.IsCrit == true)

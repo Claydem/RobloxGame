@@ -42,33 +42,48 @@ safeRequire("DuelService")
 local playerBaseIndices = {}
 local nextBaseIndex = 1
 
-Players.PlayerAdded:Connect(function(player)
-	-- Виділяємо унікальний індекс бази для гравця
-	local baseIndex = nextBaseIndex
-	nextBaseIndex += 1
-	playerBaseIndices[player.UserId] = baseIndex
-	
+local function setupPlayerBase(player)
+	if not player or not player.Parent then return end
+
+	local baseIndex = playerBaseIndices[player.UserId]
+	if not baseIndex then
+		baseIndex = nextBaseIndex
+		nextBaseIndex += 1
+		playerBaseIndices[player.UserId] = baseIndex
+	end
+
 	-- Генеруємо власну базу для гравця
 	local playerBaseFolder = MapManager.GeneratePlayerBase(player, baseIndex)
-	local spawnLoc = playerBaseFolder:WaitForChild("SpawnLocation", 5)
-	
+	local spawnLoc = playerBaseFolder and playerBaseFolder:WaitForChild("SpawnLocation", 5)
+
 	if spawnLoc then
-		-- Призначаємо цю базу місцем для спавну гравця
 		player.RespawnLocation = spawnLoc
 	end
-	
-	player.CharacterAdded:Connect(function(char)
-		-- Коли персонаж завантажується, переконуємося, що він з'явиться на своїй базі (якщо RespawnLocation не спрацює миттєво)
-		task.wait(0.5)
-		if spawnLoc and char:FindFirstChild("HumanoidRootPart") then
-			char.HumanoidRootPart.CFrame = spawnLoc.CFrame + Vector3.new(0, 3, 0)
+
+	local function positionCharacter(char)
+		task.wait(0.2)
+		local root = char:WaitForChild("HumanoidRootPart", 5)
+		if root and spawnLoc then
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			char:PivotTo(spawnLoc.CFrame + Vector3.new(0, 3, 0))
+			print(string.format("[InitServer] 🏡 %s успішно розміщено на власній базі #%d", player.Name, baseIndex))
 		end
-	end)
-end)
+	end
+
+	if player.Character then
+		task.spawn(positionCharacter, player.Character)
+	end
+	player.CharacterAdded:Connect(positionCharacter)
+end
+
+Players.PlayerAdded:Connect(setupPlayerBase)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(setupPlayerBase, player)
+end
 
 Players.PlayerRemoving:Connect(function(player)
 	playerBaseIndices[player.UserId] = nil
-	-- (Optional: Можна видаляти базу гравця, коли він виходить)
 	local baseFolder = game:GetService("Workspace"):FindFirstChild("Base_" .. player.UserId)
 	if baseFolder then
 		baseFolder:Destroy()

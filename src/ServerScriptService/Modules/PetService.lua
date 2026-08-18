@@ -108,18 +108,17 @@ local function updatePetBillboard(model: Model, unitName: string, hunger: number
 	end
 end
 
--- Оновлення 3D моделей у PetCareZone для гравця
+-- Оновлення 3D моделей у власній базі гравця
 function PetService.UpdatePlayerPetModels(player: Player)
 	local DataManager = getDataManager()
 	local data = DataManager.GetPlayerData(player)
 	if not data or not data.Inventory then return end
 
-	local careZone = Workspace:FindFirstChild("PetCareZone")
+	local baseName = "Base_" .. player.UserId
+	local careZone = Workspace:FindFirstChild(baseName) or Workspace:FindFirstChild("PetCareZone")
 	if not careZone then
-		-- Чекаємо до 10 секунд на появу PetCareZone (MapManager може ще не завершити)
-		careZone = Workspace:WaitForChild("PetCareZone", 10)
+		careZone = Workspace:WaitForChild(baseName, 3)
 		if not careZone then
-			warn("[PetService] PetCareZone не знайдено у Workspace!")
 			return
 		end
 	end
