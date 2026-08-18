@@ -451,36 +451,198 @@ task.spawn(function()
 end)
 
 -- ═══════════════════════════════════════════════════════
---  DUEL SYSTEM (Accept / Decline via SetCore)
+--  DUEL SYSTEM (Hide Own Prompt, Custom Modal & Notices)
 -- ═══════════════════════════════════════════════════════
 
-local StarterGui = game:GetService("StarterGui")
 local DuelRequestEvent = EventsFolder:WaitForChild("DuelRequest", 10)
 local DuelRespondEvent = EventsFolder:WaitForChild("DuelRespond", 10)
+local DuelNoticeEvent  = EventsFolder:WaitForChild("DuelNotice", 10)
 
-if DuelRequestEvent and DuelRespondEvent then
-	DuelRequestEvent.OnClientEvent:Connect(function(senderName)
-		local bindableEvent = Instance.new("BindableEvent")
-		bindableEvent.Event:Connect(function(response)
-			if response == "Accept" then
-				DuelRespondEvent:FireServer(true)
-			else
-				DuelRespondEvent:FireServer(false)
+-- 1. Приховуємо власний ProximityPrompt (щоб не бачити кнопку виклику на собі)
+local function hideOwnDuelPrompt(char)
+	if not char then return end
+	local function checkPrompt(desc)
+		if desc:IsA("ProximityPrompt") and desc.Name == "DuelPrompt" then
+			desc.Enabled = false
+		end
+	end
+	for _, d in ipairs(char:GetDescendants()) do
+		checkPrompt(d)
+	end
+	char.DescendantAdded:Connect(checkPrompt)
+end
+
+if LocalPlayer.Character then
+	task.spawn(hideOwnDuelPrompt, LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(hideOwnDuelPrompt)
+
+-- 2. Toast / Banner сповіщення для повідомлень дуелей
+local function showDuelNotice(messageText)
+	local screenGui = PlayerGui:FindFirstChild("MainGui") or PlayerGui:WaitForChild("MainGui", 5)
+	if not screenGui then return end
+
+	local banner = Instance.new("Frame")
+	banner.Size = UDim2.new(0, 420, 0, 46)
+	banner.Position = UDim2.new(0.5, -210, 0, -60)
+	banner.BackgroundColor3 = Color3.fromRGB(22, 26, 36)
+	banner.ZIndex = 50
+	banner.Parent = screenGui
+	createCorner(banner, 10)
+	createStroke(banner, Color3.fromRGB(255, 200, 50), 1.5)
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -20, 1, 0)
+	lbl.Position = UDim2.new(0, 10, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = messageText
+	lbl.TextColor3 = Color3.fromRGB(255, 240, 200)
+	lbl.TextSize = 13
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextWrapped = true
+	lbl.ZIndex = 51
+	lbl.Parent = banner
+
+	-- Анімація виїзду зверху
+	banner:TweenPosition(UDim2.new(0.5, -210, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.4, true)
+
+	task.delay(4, function()
+		if banner and banner.Parent then
+			banner:TweenPosition(UDim2.new(0.5, -210, 0, -60), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true)
+			task.wait(0.35)
+			banner:Destroy()
+		end
+	end)
+end
+
+if DuelNoticeEvent then
+	DuelNoticeEvent.OnClientEvent:Connect(showDuelNotice)
+end
+
+-- 3. Custom Modal вікно запрошення на дуель
+local activeDuelModal = nil
+
+local function showDuelModal(senderName, timeoutSec)
+	timeoutSec = timeoutSec or 15
+	if activeDuelModal then
+		activeDuelModal:Destroy()
+		activeDuelModal = nil
+	end
+
+	local screenGui = PlayerGui:FindFirstChild("MainGui") or PlayerGui:WaitForChild("MainGui", 5)
+	if not screenGui then return end
+
+	local modal = Instance.new("Frame")
+	modal.Size = UDim2.new(0, 360, 0, 190)
+	modal.Position = UDim2.new(0.5, -180, 0.4, -95)
+	modal.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+	modal.ZIndex = 100
+	modal.Parent = screenGui
+	activeDuelModal = modal
+	createCorner(modal, 12)
+	createStroke(modal, Color3.fromRGB(231, 76, 60), 2)
+
+	-- Заголовок
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 34)
+	title.Position = UDim2.new(0, 0, 0, 12)
+	title.BackgroundTransparency = 1
+	title.Text = "⚔️ DUEL CHALLENGE!"
+	title.TextColor3 = Color3.fromRGB(255, 75, 75)
+	title.TextSize = 18
+	title.Font = Enum.Font.GothamBlack
+	title.ZIndex = 101
+	title.Parent = modal
+
+	-- Опис
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(1, -24, 0, 36)
+	desc.Position = UDim2.new(0, 12, 0, 48)
+	desc.BackgroundTransparency = 1
+	desc.Text = string.format("<b>%s</b> has challenged you to a 1v1 battle!", senderName)
+	desc.TextColor3 = Color3.fromRGB(230, 235, 245)
+	desc.TextSize = 13
+	desc.Font = Enum.Font.GothamMedium
+	desc.RichText = true
+	desc.TextWrapped = true
+	desc.ZIndex = 101
+	desc.Parent = modal
+
+	-- Таймер
+	local timerLbl = Instance.new("TextLabel")
+	timerLbl.Size = UDim2.new(1, 0, 0, 20)
+	timerLbl.Position = UDim2.new(0, 0, 0, 88)
+	timerLbl.BackgroundTransparency = 1
+	timerLbl.Text = string.format("⏳ Auto-decline in: %ds", timeoutSec)
+	timerLbl.TextColor3 = Color3.fromRGB(255, 200, 80)
+	timerLbl.TextSize = 11
+	timerLbl.Font = Enum.Font.GothamBold
+	timerLbl.ZIndex = 101
+	timerLbl.Parent = modal
+
+	-- Кнопка ПРИЙНЯТИ
+	local acceptBtn = Instance.new("TextButton")
+	acceptBtn.Size = UDim2.new(0, 150, 0, 42)
+	acceptBtn.Position = UDim2.new(0, 20, 0, 124)
+	acceptBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	acceptBtn.Text = "⚔️ ACCEPT"
+	acceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	acceptBtn.TextSize = 14
+	acceptBtn.Font = Enum.Font.GothamBlack
+	acceptBtn.ZIndex = 101
+	acceptBtn.Parent = modal
+	createCorner(acceptBtn, 8)
+
+	-- Кнопка ВІДХИЛИТИ
+	local declineBtn = Instance.new("TextButton")
+	declineBtn.Size = UDim2.new(0, 150, 0, 42)
+	declineBtn.Position = UDim2.new(1, -170, 0, 124)
+	declineBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+	declineBtn.Text = "✖ DECLINE"
+	declineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	declineBtn.TextSize = 14
+	declineBtn.Font = Enum.Font.GothamBlack
+	declineBtn.ZIndex = 101
+	declineBtn.Parent = modal
+	createCorner(declineBtn, 8)
+
+	local isResponded = false
+	local function respond(accept)
+		if isResponded then return end
+		isResponded = true
+		if DuelRespondEvent then
+			DuelRespondEvent:FireServer(accept)
+		end
+		if modal and modal.Parent then
+			modal:Destroy()
+		end
+		if activeDuelModal == modal then
+			activeDuelModal = nil
+		end
+	end
+
+	acceptBtn.MouseButton1Click:Connect(function() respond(true) end)
+	declineBtn.MouseButton1Click:Connect(function() respond(false) end)
+
+	-- Таймер зворотного відліку
+	task.spawn(function()
+		local remaining = timeoutSec
+		while remaining > 0 and not isResponded and modal and modal.Parent do
+			task.wait(1)
+			remaining -= 1
+			if timerLbl and timerLbl.Parent then
+				timerLbl.Text = string.format("⏳ Auto-decline in: %ds", remaining)
 			end
-			bindableEvent:Destroy()
-		end)
-		
-		-- Use Roblox CoreGui Notification System
-		pcall(function()
-			StarterGui:SetCore("SendNotification", {
-				Title = "Duel Request!",
-				Text = senderName .. " challenged you to a duel!",
-				Duration = 10,
-				Button1 = "Accept",
-				Button2 = "Decline",
-				Callback = bindableEvent
-			})
-		end)
+		end
+		if not isResponded then
+			respond(false)
+		end
+	end)
+end
+
+if DuelRequestEvent then
+	DuelRequestEvent.OnClientEvent:Connect(function(senderName, timeoutSec)
+		showDuelModal(senderName, timeoutSec)
 	end)
 end
 -- Async Server Events Binding
