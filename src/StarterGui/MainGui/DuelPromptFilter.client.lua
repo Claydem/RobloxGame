@@ -45,13 +45,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10) or ReplicatedStorage:FindFirstChild("Events")
 local TriggerDuelEvent = eventsFolder and eventsFolder:WaitForChild("TriggerDuel", 10)
 
-ProximityPromptService.PromptTriggered:Connect(function(prompt, playerWhoTriggered)
-	if playerWhoTriggered ~= LocalPlayer then return end
+ProximityPromptService.PromptTriggered:Connect(function(prompt, inputType)
 	if prompt.Name == "DuelPrompt" and prompt.Parent then
-		local targetChar = prompt.Parent.Parent
+		local targetChar = prompt.Parent:IsA("Model") and prompt.Parent or prompt.Parent.Parent
 		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
 		if targetPlayer and targetPlayer ~= LocalPlayer then
-			print(string.format("[DuelPromptFilter] 🎯 PromptTriggered on %s! Sending TriggerDuel...", targetPlayer.Name))
+			print(string.format("[DuelPromptFilter] 🎯 Client PromptTriggered on %s! Firing TriggerDuel...", targetPlayer.Name))
 			if TriggerDuelEvent then
 				TriggerDuelEvent:FireServer(targetPlayer.UserId)
 			end

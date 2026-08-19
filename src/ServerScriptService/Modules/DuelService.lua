@@ -138,6 +138,20 @@ local function setupPlayerPrompt(player)
 	player.CharacterAdded:Connect(attachPrompt)
 end
 
+-- ── СЕРВЕРНИЙ ОБРОБНИК СИГНАЛІВ PROXIMITY PROMPT ──
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt, sender)
+	if prompt.Name == "DuelPrompt" and prompt.Parent then
+		local targetChar = prompt.Parent:IsA("Model") and prompt.Parent or prompt.Parent.Parent
+		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
+		if targetPlayer and sender then
+			print(string.format("[DuelService] 🎯 Server PromptTriggered: %s -> %s", sender.Name, targetPlayer.Name))
+			handleDuelChallenge(sender, targetPlayer)
+		end
+	end
+end)
+
 Players.PlayerAdded:Connect(setupPlayerPrompt)
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(setupPlayerPrompt, player)
