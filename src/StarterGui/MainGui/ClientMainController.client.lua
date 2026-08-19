@@ -462,8 +462,9 @@ local DuelNoticeEvent  = EventsFolder:WaitForChild("DuelNotice", 10)
 local function hideOwnDuelPrompt(char)
 	if not char then return end
 	local function checkPrompt(desc)
-		if desc:IsA("ProximityPrompt") and desc.Name == "DuelPrompt" then
+		if desc:IsA("ProximityPrompt") then
 			desc.Enabled = false
+			desc.MaxActivationDistance = 0
 		end
 	end
 	for _, d in ipairs(char:GetDescendants()) do
