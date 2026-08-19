@@ -47,6 +47,11 @@ local TriggerDuelEvent = getOrCreateEvent("TriggerDuel")
 local function handleDuelChallenge(sender, targetPlayer)
 	if not sender or not targetPlayer or not sender.Parent or not targetPlayer.Parent then return end
 
+	-- Захист від подвійного спрацювання (клієнт + сервер одночасно)
+	local dbKey = "trigger_debounce_" .. sender.UserId
+	if duelCooldowns[dbKey] and os.clock() < duelCooldowns[dbKey] then return end
+	duelCooldowns[dbKey] = os.clock() + 1.5 -- 1.5 сек анти-спам
+
 	if sender.UserId == targetPlayer.UserId then
 		DuelNoticeEvent:FireClient(sender, "⚠️ Не можна викликати на дуель самого себе! Підійдіть до іншого живого гравця.")
 		return
@@ -102,7 +107,7 @@ local function handleDuelChallenge(sender, targetPlayer)
 	end)
 end
 
--- Обробка прямого виклику з клієнта
+-- Обробка прямого виклику з клієнта (надійний fallback, якщо серверний Prompt.Triggered не спрацює)
 TriggerDuelEvent.OnServerEvent:Connect(function(sender, targetUserId)
 	local targetPlayer = Players:GetPlayerByUserId(targetUserId)
 	if targetPlayer then
@@ -140,19 +145,7 @@ local function setupPlayerPrompt(player)
 	player.CharacterAdded:Connect(attachPrompt)
 end
 
--- ── СЕРВЕРНИЙ ОБРОБНИК СИГНАЛІВ PROXIMITY PROMPT ──
-local ProximityPromptService = game:GetService("ProximityPromptService")
-
-ProximityPromptService.PromptTriggered:Connect(function(prompt, sender)
-	if prompt.Name == "DuelPrompt" and prompt.Parent then
-		local targetChar = prompt.Parent:IsA("Model") and prompt.Parent or prompt.Parent.Parent
-		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
-		if targetPlayer and sender then
-			print(string.format("[DuelService] 🎯 Server PromptTriggered: %s -> %s", sender.Name, targetPlayer.Name))
-			handleDuelChallenge(sender, targetPlayer)
-		end
-	end
-end)
+-- ProximityPromptService global listener disabled. We rely on prompt.Triggered.
 
 Players.PlayerAdded:Connect(setupPlayerPrompt)
 for _, player in ipairs(Players:GetPlayers()) do
