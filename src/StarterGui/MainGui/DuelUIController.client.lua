@@ -76,32 +76,7 @@ local DuelRespondEvent = getEvent("DuelRespond")
 local DuelNoticeEvent  = getEvent("DuelNotice")
 local TriggerDuelEvent = getEvent("TriggerDuel")
 
--- ── 4. ПРИХОВУВАННЯ ПІДКАЗКИ НА ВЛАСНОМУ ПЕРСОНАЖІ ──
-local function hideSelfPrompts(char)
-	if not char then return end
-	local function check(item)
-		if item:IsA("ProximityPrompt") then
-			item.Enabled = false
-			item.MaxActivationDistance = 0
-		end
-	end
-	for _, desc in ipairs(char:GetDescendants()) do
-		check(desc)
-	end
-	char.DescendantAdded:Connect(check)
-end
-
-if LocalPlayer.Character then
-	task.spawn(hideSelfPrompts, LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(hideSelfPrompts)
-
-ProximityPromptService.PromptShown:Connect(function(prompt)
-	if LocalPlayer.Character and prompt:IsDescendantOf(LocalPlayer.Character) then
-		prompt.Enabled = false
-		prompt.MaxActivationDistance = 0
-	end
-end)
+-- (Логіка приховування власного ProximityPrompt видалена, щоб гарантувати, що він з'являтиметься для інших гравців без жодних збоїв)
 
 -- ── 5. КЛІЄНТСЬКЕ СПРАЦЮВАННЯ PROXIMITY PROMPT ──
 ProximityPromptService.PromptTriggered:Connect(function(prompt)

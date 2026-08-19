@@ -71,7 +71,7 @@ safeRequire("PetService")
 safeRequire("BattleService")
 safeRequire("ShopService")
 safeRequire("TeleportService")
-safeRequire("DuelService")
+safeRequire("PvPDuelService")
 
 -- ── DYNAMIC PLAYER BASE ALLOCATION ──
 local playerBaseIndices = {}

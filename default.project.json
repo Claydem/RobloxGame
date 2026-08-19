@@ -20,9 +20,11 @@
     "StarterGui": {
       "$className": "StarterGui",
       "MainGui": {
+        "$className": "ScreenGui",
         "$path": "src/StarterGui/MainGui"
       },
       "BattleGui": {
+        "$className": "ScreenGui",
         "$path": "src/StarterGui/BattleGui"
       }
     }
