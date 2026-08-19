@@ -54,13 +54,30 @@ local function setupPlayerPrompt(player)
 			prompt.RequiresLineOfSight = false
 			prompt.MaxActivationDistance = 14
 			prompt.HoldDuration = 0.5
+			prompt.ClickablePrompt = true
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
 			prompt.Parent = root
 
 			prompt.Triggered:Connect(function(sender)
 				if not sender or not sender.Parent then return end
-				if sender.UserId == player.UserId then return end -- не можна дуелитись із собою
+				if sender.UserId == player.UserId then
+					DuelNoticeEvent:FireClient(sender, "⚠️ Не можна викликати на дуель самого себе! Підійдіть до іншого живого гравця.")
+					return
+				end
 
-				-- 1. Перевірка 5-хвилинного кулдауну
+				-- 1. Перевірка, чи гравці не в бою
+				if _G.BattleService and _G.BattleService.IsInBattle then
+					if _G.BattleService.IsInBattle(sender) then
+						DuelNoticeEvent:FireClient(sender, "⚔️ Ви вже перебуваєте у бою!")
+						return
+					end
+					if _G.BattleService.IsInBattle(player) then
+						DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s зараз перебуває у бою!", player.Name))
+						return
+					end
+				end
+
+				-- 2. Перевірка 5-хвилинного кулдауну
 				local cdKey = sender.UserId .. "_" .. player.UserId
 				local cdExp = duelCooldowns[cdKey]
 				if cdExp and os.clock() < cdExp then
@@ -71,13 +88,13 @@ local function setupPlayerPrompt(player)
 					return
 				end
 
-				-- 2. Перевірка, чи не зайнятий вже гравець іншим боєм або дуеллю
+				-- 3. Перевірка, чи не зайнятий вже гравець іншим викликом
 				if pendingDuels[player.UserId] then
 					DuelNoticeEvent:FireClient(sender, string.format("⏳ %s вже розглядає інший виклик на дуель!", player.Name))
 					return
 				end
 
-				-- 3. Реєстрація запиту
+				-- 4. Реєстрація запиту
 				pendingDuels[player.UserId] = {
 					senderId = sender.UserId,
 					timestamp = os.clock()

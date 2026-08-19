@@ -11,8 +11,42 @@ print("🚀 [ServerInit] Запуск Brainrot Case & Fight Club...")
 print("==================================================")
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local modulesFolder = ServerScriptService:WaitForChild("Modules", 10) or ServerScriptService
+
+-- ── ГАРАНТОВАНЕ СТВОРЕННЯ ВСІХ REMOTE EVENTS ТА FUNCTIONS НА СТАРТІ ──
+local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+if not eventsFolder then
+	eventsFolder = Instance.new("Folder")
+	eventsFolder.Name = "Events"
+	eventsFolder.Parent = ReplicatedStorage
+end
+
+local remoteEventsList = {
+	"DuelRequest", "DuelRespond", "DuelNotice",
+	"QTEResult", "BattlePhaseUpdate", "BattleStateUpdate",
+	"FeedPet", "ToggleEquipPet", "InventoryUpdate", "CurrencyUpdate",
+	"RosterUpdate", "RosterError", "SelectZone", "SubmitBattleTurn"
+}
+for _, evName in ipairs(remoteEventsList) do
+	if not eventsFolder:FindFirstChild(evName) then
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = evName
+		ev.Parent = eventsFolder
+	end
+end
+
+local remoteFunctionsList = {
+	"StartBattle", "OpenCase", "BuyItem"
+}
+for _, fnName in ipairs(remoteFunctionsList) do
+	if not eventsFolder:FindFirstChild(fnName) then
+		local fn = Instance.new("RemoteFunction")
+		fn.Name = fnName
+		fn.Parent = eventsFolder
+	end
+end
 
 local function safeRequire(name)
 	local child = modulesFolder:WaitForChild(name, 5) or ServerScriptService:FindFirstChild(name)
