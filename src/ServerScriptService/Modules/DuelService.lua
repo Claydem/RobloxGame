@@ -124,6 +124,8 @@ local function setupPlayerPrompt(player)
 			prompt.HoldDuration = 0.5
 			prompt.ClickablePrompt = true
 			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.UIOffset = Vector3.new(0, 1.5, 0)
+			prompt.Exclusivity = Enum.ProximityPromptExclusivity.OneGlobally
 			prompt.Parent = root
 
 			prompt.Triggered:Connect(function(sender)
