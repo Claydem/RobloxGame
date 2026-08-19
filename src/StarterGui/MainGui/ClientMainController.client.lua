@@ -84,17 +84,17 @@ local function createStroke(parent, color, thickness)
 	return stroke
 end
 
--- === 1. TOGGLE BUTTON (Top Right Corner - Below Roblox TopBar Inset) ===
+-- === 1. TOGGLE BUTTON (Top Right Corner - Beside PlayerList) ===
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Name = "ToggleMenuBtn"
 toggleMenuBtn.Size = UDim2.new(0, 160, 0, 42)
-toggleMenuBtn.Position = UDim2.new(1, -175, 0, 48)
+toggleMenuBtn.Position = UDim2.new(1, -340, 0, 14)
 toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 toggleMenuBtn.Text = "🧠 HIDE MENU"
 toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
 toggleMenuBtn.TextSize = 13
 toggleMenuBtn.Font = Enum.Font.GothamBold
-toggleMenuBtn.ZIndex = 1000
+toggleMenuBtn.ZIndex = 5000
 toggleMenuBtn.Active = true
 toggleMenuBtn.Parent = screenGui
 createCorner(toggleMenuBtn, 10)
