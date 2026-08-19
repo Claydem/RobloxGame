@@ -71,6 +71,22 @@ openCaseFunction.OnServerInvoke = function(player: Player)
 
 	print(string.format("[Gacha] %s → %s [%s] (%s)", player.Name, displayName, rollResult.ClassKey, rollResult.RarityKey))
 
+	-- 🌐 БРОАДКАСТ ВІДКРИТТЯ КЕЙСА ДЛЯ ВСІХ ГРАВЦІВ
+	local globalUnboxEvent = eventsFolder:FindFirstChild("GlobalCaseUnboxed")
+	if globalUnboxEvent then
+		globalUnboxEvent:FireAllClients(player.Name, player.UserId, {
+			Id = rollResult.SpeciesId,
+			Name = displayName,
+			Rarity = rollResult.RarityKey,
+			RarityName = rarityCfg and rarityCfg.Name or "Common",
+			RarityIcon = rarityCfg and rarityCfg.Icon or "⚪",
+			RarityColor = rarityCfg and rarityCfg.Color or Color3.fromRGB(200, 200, 200),
+			Class = rollResult.ClassKey,
+			ClassColor = classCfg and classCfg.Color or Color3.fromRGB(220, 220, 220),
+			ClassAbilityIcon = classCfg and classCfg.AbilityIcon or "",
+		})
+	end
+
 	return {
 		Success = true,
 		Item = {

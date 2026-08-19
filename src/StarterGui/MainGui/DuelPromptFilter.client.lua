@@ -39,3 +39,22 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
 		prompt.MaxActivationDistance = 0
 	end
 end)
+
+-- Пряме спрацювання клієнтського затискання кнопки E на іншому гравцеві
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10) or ReplicatedStorage:FindFirstChild("Events")
+local TriggerDuelEvent = eventsFolder and eventsFolder:WaitForChild("TriggerDuel", 10)
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt, playerWhoTriggered)
+	if playerWhoTriggered ~= LocalPlayer then return end
+	if prompt.Name == "DuelPrompt" and prompt.Parent then
+		local targetChar = prompt.Parent.Parent
+		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
+		if targetPlayer and targetPlayer ~= LocalPlayer then
+			print(string.format("[DuelPromptFilter] 🎯 PromptTriggered on %s! Sending TriggerDuel...", targetPlayer.Name))
+			if TriggerDuelEvent then
+				TriggerDuelEvent:FireServer(targetPlayer.UserId)
+			end
+		end
+	end
+end)

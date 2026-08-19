@@ -24,7 +24,8 @@ if not eventsFolder then
 end
 
 local remoteEventsList = {
-	"DuelRequest", "DuelRespond", "DuelNotice",
+	"DuelRequest", "DuelRespond", "DuelNotice", "TriggerDuel",
+	"GlobalCaseUnboxed", "CaseAnimationFinished",
 	"QTEResult", "BattlePhaseUpdate", "BattleStateUpdate",
 	"FeedPet", "ToggleEquipPet", "InventoryUpdate", "CurrencyUpdate",
 	"RosterUpdate", "RosterError", "SelectZone", "SubmitBattleTurn"
