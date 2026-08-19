@@ -166,11 +166,14 @@ DuelRespondEvent.OnServerEvent:Connect(function(player, accepted)
 			DuelNoticeEvent:FireClient(player, string.format("⚔️ You accepted %s's challenge! Teleporting to arena...", sender.Name))
 
 			task.wait(0.5)
-			if _G.BattleService then
-				_G.BattleService.StartPvPBattle(sender, player)
-			else
-				warn("[DuelService] ❌ BattleService not found!")
-			end
+			-- Замість миттєвого початку бою, відправляємо гравцям запит на вибір пета
+			local DuelSelectPetEvent = game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("DuelSelectPet")
+			
+			-- Зберігаємо стан очікування
+			pendingDuels[player.UserId] = { state = "SelectingPets", p1 = sender, p2 = player, p1_pets = nil, p2_pets = nil }
+			
+			DuelSelectPetEvent:FireClient(sender, player.Name)
+			DuelSelectPetEvent:FireClient(player, sender.Name)
 		end
 	else
 		-- Гравець відхилив дуель — ставимо 5 хвилин кулдауну для того, хто надіслав
@@ -179,6 +182,34 @@ DuelRespondEvent.OnServerEvent:Connect(function(player, accepted)
 
 		if sender then
 			DuelNoticeEvent:FireClient(sender, string.format("❌ %s declined your duel challenge. Cooldown: 5 minutes.", player.Name))
+		end
+	end
+end)
+
+-- Обробка відправки вибраних петів
+local DuelSubmitPetsEvent = getOrCreateEvent("DuelSubmitPets")
+DuelSubmitPetsEvent.OnServerEvent:Connect(function(sender, selectedUUIDs)
+	-- Шукаємо, в якому активному дуелі бере участь цей гравець
+	for hostId, duel in pairs(pendingDuels) do
+		if duel.state == "SelectingPets" and (duel.p1.UserId == sender.UserId or duel.p2.UserId == sender.UserId) then
+			if duel.p1.UserId == sender.UserId then
+				duel.p1_pets = selectedUUIDs
+			else
+				duel.p2_pets = selectedUUIDs
+			end
+			
+			DuelNoticeEvent:FireClient(sender, "✅ Pets selected! Waiting for opponent...")
+			
+			-- Якщо обидва вибрали
+			if duel.p1_pets and duel.p2_pets then
+				pendingDuels[hostId] = nil
+				if _G.BattleService then
+					_G.BattleService.StartPvPBattle(duel.p1, duel.p2, duel.p1_pets, duel.p2_pets)
+				else
+					warn("[DuelService] ❌ BattleService not found!")
+				end
+			end
+			break
 		end
 	end
 end)

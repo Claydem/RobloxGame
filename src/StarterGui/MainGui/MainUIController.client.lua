@@ -94,7 +94,8 @@ end
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Name = "ToggleMenuBtn"
 toggleMenuBtn.Size = UDim2.new(0, 160, 0, 42)
-toggleMenuBtn.Position = UDim2.new(1, -175, 0, 14)
+toggleMenuBtn.AnchorPoint = Vector2.new(1, 0)
+toggleMenuBtn.Position = UDim2.new(1, -15, 0, 14)
 toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 toggleMenuBtn.Text = "🧠 HIDE MENU"
 toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 215, 0)

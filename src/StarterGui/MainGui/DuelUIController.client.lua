@@ -75,6 +75,18 @@ local DuelRequestEvent = getEvent("DuelRequest")
 local DuelRespondEvent = getEvent("DuelRespond")
 local DuelNoticeEvent  = getEvent("DuelNotice")
 local TriggerDuelEvent = getEvent("TriggerDuel")
+local DuelSelectPetEvent = getEvent("DuelSelectPet")
+local DuelSubmitPetsEvent = getEvent("DuelSubmitPets")
+
+-- Кеш інвентарю для вибору
+local cachedInventory = {}
+local InventoryUpdate = ReplicatedStorage:WaitForChild("Events"):FindFirstChild("InventoryUpdate")
+if InventoryUpdate then
+	InventoryUpdate.OnClientEvent:Connect(function(inv)
+		cachedInventory = inv or {}
+	end)
+end
+
 
 -- ── 4. ПРИХОВУВАННЯ ПІДКАЗКИ НА ВЛАСНОМУ ПЕРСОНАЖІ ──
 ProximityPromptService.PromptShown:Connect(function(prompt)
@@ -308,3 +320,148 @@ if DuelRequestEvent then
 end
 
 print("✅ [DuelController] Клієнтський модуль дуелей успішно запущено!")
+
+
+-- ── 8. ЕКРАН ВИБОРУ ПЕТІВ (PET SELECTION) ──
+local selectionModal = nil
+
+local function showPetSelection(opponentName)
+	if selectionModal and selectionModal.Parent then selectionModal:Destroy() end
+
+	local screenGui = getScreenGui()
+	if not screenGui then return end
+
+	local modal = Instance.new("Frame")
+	modal.Name = "PetSelectionModal"
+	modal.Size = UDim2.new(0, 500, 0, 360)
+	modal.Position = UDim2.new(0.5, -250, 0.5, -180)
+	modal.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+	modal.ZIndex = 2000
+	modal.Parent = screenGui
+	selectionModal = modal
+	createCorner(modal, 12)
+	createStroke(modal, Color3.fromRGB(80, 150, 255), 2.5)
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "SELECT TEAM (VS " .. opponentName .. ")"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextSize = 20
+	title.Font = Enum.Font.GothamBlack
+	title.ZIndex = 2001
+	title.Parent = modal
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -20, 1, -120)
+	scroll.Position = UDim2.new(0, 10, 0, 60)
+	scroll.BackgroundTransparency = 1
+	scroll.ScrollBarThickness = 6
+	scroll.ZIndex = 2001
+	scroll.Parent = modal
+
+	local layout = Instance.new("UIGridLayout")
+	layout.CellSize = UDim2.new(0, 100, 0, 120)
+	layout.CellPadding = UDim2.new(0, 10, 0, 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = scroll
+	
+	local selectedUUIDs = {}
+	local countLbl = Instance.new("TextLabel")
+	countLbl.Size = UDim2.new(1, 0, 0, 20)
+	countLbl.Position = UDim2.new(0, 0, 1, -50)
+	countLbl.BackgroundTransparency = 1
+	countLbl.Text = "Selected: 0/3"
+	countLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+	countLbl.TextSize = 14
+	countLbl.Font = Enum.Font.GothamBold
+	countLbl.ZIndex = 2001
+	countLbl.Parent = modal
+
+	local submitBtn = Instance.new("TextButton")
+	submitBtn.Size = UDim2.new(0, 200, 0, 40)
+	submitBtn.Position = UDim2.new(0.5, -100, 1, -45)
+	submitBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	submitBtn.Text = "CONFIRM"
+	submitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	submitBtn.TextSize = 16
+	submitBtn.Font = Enum.Font.GothamBlack
+	submitBtn.ZIndex = 2001
+	submitBtn.AutoButtonColor = false
+	submitBtn.Parent = modal
+	createCorner(submitBtn, 8)
+
+	-- Заповнюємо сітку інвентарем
+	local ModFolder = ReplicatedStorage:WaitForChild("Modules", 10)
+	local ItemDB = ModFolder and require(ModFolder:WaitForChild("ItemDatabase"))
+	
+	for i, u in ipairs(cachedInventory) do
+		local cfg = ItemDB and ItemDB.GetUnitStats(u)
+		if cfg then
+			local btn = Instance.new("TextButton")
+			btn.Text = ""
+			btn.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+			btn.ZIndex = 2002
+			btn.Parent = scroll
+			createCorner(btn, 8)
+			local str = createStroke(btn, Color3.fromRGB(60, 60, 60), 2)
+			
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, 0, 1, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = cfg.Name .. "\nLvl " .. (u.Level or 1)
+			lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+			lbl.TextSize = 14
+			lbl.Font = Enum.Font.GothamBold
+			lbl.ZIndex = 2003
+			lbl.Parent = btn
+
+			local isSelected = false
+			btn.MouseButton1Click:Connect(function()
+				if isSelected then
+					isSelected = false
+					str.Color = Color3.fromRGB(60, 60, 60)
+					for idx, v in ipairs(selectedUUIDs) do
+						if v == u.UUID then table.remove(selectedUUIDs, idx) break end
+					end
+				else
+					if #selectedUUIDs < 3 then
+						isSelected = true
+						str.Color = Color3.fromRGB(80, 255, 100)
+						table.insert(selectedUUIDs, u.UUID)
+					end
+				end
+				countLbl.Text = "Selected: " .. #selectedUUIDs .. "/3"
+				if #selectedUUIDs > 0 then
+					submitBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+				else
+					submitBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+				end
+			end)
+		end
+	end
+	
+	-- Підгонка розміру скролу
+	scroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#cachedInventory / 4) * 130)
+
+	submitBtn.MouseButton1Click:Connect(function()
+		if #selectedUUIDs > 0 then
+			submitBtn.Text = "WAITING..."
+			submitBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+			submitBtn.Active = false
+			if DuelSubmitPetsEvent then
+				DuelSubmitPetsEvent:FireServer(selectedUUIDs)
+			end
+			task.delay(1, function()
+				if selectionModal and selectionModal.Parent then selectionModal:Destroy() end
+			end)
+		end
+	end)
+end
+
+if DuelSelectPetEvent then
+	DuelSelectPetEvent.OnClientEvent:Connect(function(opponentName)
+		showPetSelection(opponentName)
+	end)
+end
