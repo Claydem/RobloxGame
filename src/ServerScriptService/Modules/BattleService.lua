@@ -740,7 +740,7 @@ function BattleService.IsInBattle(player)
 	return playerBattles[player] ~= nil
 end
 
-function BattleService.StartPvPBattle(p1, p2)
+function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids)
 	if playerBattles[p1] or playerBattles[p2] then return end
 
 	local DM = getDataManager()
@@ -748,40 +748,43 @@ function BattleService.StartPvPBattle(p1, p2)
 	local d2 = DM.GetPlayerData(p2)
 
 	local t1, t2 = {}, {}
-	if d1 and d1.Inventory then
-		for _, u in ipairs(d1.Inventory) do
-			if u.Equipped and #t1 < 3 then
-				local cfg = ItemDatabase.GetUnitStats(u)
-				if cfg then table.insert(t1, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+	
+	local function populateTeam(playerData, uuids, teamTable)
+		if not playerData or not playerData.Inventory then return end
+		-- Якщо UUID вказані (гравець сам вибрав), беремо їх
+		if uuids and #uuids > 0 then
+			for _, targetUUID in ipairs(uuids) do
+				for _, u in ipairs(playerData.Inventory) do
+					if u.UUID == targetUUID then
+						local cfg = ItemDatabase.GetUnitStats(u)
+						if cfg then table.insert(teamTable, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+						break
+					end
+				end
 			end
 		end
-		-- Автоматичний fallback на перших юнітів з інвентаря, якщо немає equipped
-		if #t1 == 0 and #d1.Inventory > 0 then
-			for _, u in ipairs(d1.Inventory) do
-				if #t1 < 3 then
+		-- Фолбек на Equipped
+		if #teamTable == 0 then
+			for _, u in ipairs(playerData.Inventory) do
+				if u.Equipped and #teamTable < 3 then
 					local cfg = ItemDatabase.GetUnitStats(u)
-					if cfg then table.insert(t1, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+					if cfg then table.insert(teamTable, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
+				end
+			end
+		end
+		-- Останній фолбек: просто беремо перших
+		if #teamTable == 0 and #playerData.Inventory > 0 then
+			for _, u in ipairs(playerData.Inventory) do
+				if #teamTable < 3 then
+					local cfg = ItemDatabase.GetUnitStats(u)
+					if cfg then table.insert(teamTable, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
 				end
 			end
 		end
 	end
-	if d2 and d2.Inventory then
-		for _, u in ipairs(d2.Inventory) do
-			if u.Equipped and #t2 < 3 then
-				local cfg = ItemDatabase.GetUnitStats(u)
-				if cfg then table.insert(t2, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
-			end
-		end
-		-- Автоматичний fallback на перших юнітів з інвентаря, якщо немає equipped
-		if #t2 == 0 and #d2.Inventory > 0 then
-			for _, u in ipairs(d2.Inventory) do
-				if #t2 < 3 then
-					local cfg = ItemDatabase.GetUnitStats(u)
-					if cfg then table.insert(t2, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
-				end
-			end
-		end
-	end
+
+	populateTeam(d1, p1_uuids, t1)
+	populateTeam(d2, p2_uuids, t2)
 
 	if #t1 == 0 or #t2 == 0 then
 		warn("[BattleService] ❌ Не вдалося розпочати PvP: у гравця немає юнітів!")

@@ -25,6 +25,7 @@ end
 
 local remoteEventsList = {
 	"DuelRequest", "DuelRespond", "DuelNotice", "TriggerDuel",
+	"DuelSelectPet", "DuelSubmitPets",
 	"GlobalCaseUnboxed", "CaseAnimationFinished",
 	"QTEResult", "BattlePhaseUpdate", "BattleStateUpdate",
 	"FeedPet", "ToggleEquipPet", "InventoryUpdate", "CurrencyUpdate",
