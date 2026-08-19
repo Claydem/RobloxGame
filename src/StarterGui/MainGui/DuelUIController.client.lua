@@ -137,8 +137,13 @@ local function showDuelNotice(messageText)
 
 	local banner = Instance.new("Frame")
 	banner.Name = "DuelNoticeBanner"
-	banner.Size = UDim2.new(0, 460, 0, 52)
-	banner.Position = UDim2.new(0.5, -230, 0, -80)
+	banner.AnchorPoint = Vector2.new(0.5, 0)
+	banner.Size = UDim2.new(0.85, 0, 0, 48)
+	local bannerConstraint = Instance.new("UISizeConstraint")
+	bannerConstraint.MaxSize = Vector2.new(460, 48)
+	bannerConstraint.MinSize = Vector2.new(280, 40)
+	bannerConstraint.Parent = banner
+	banner.Position = UDim2.new(0.5, 0, 0, -80)
 	banner.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
 	banner.ZIndex = 500
 	banner.Parent = screenGui
@@ -159,14 +164,14 @@ local function showDuelNotice(messageText)
 
 	-- Анімація появи через TweenService
 	local openTween = TweenService:Create(banner, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, -230, 0, 30)
+		Position = UDim2.new(0.5, 0, 0, 25)
 	})
 	openTween:Play()
 
 	task.delay(4.5, function()
 		if banner and banner.Parent then
 			local closeTween = TweenService:Create(banner, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Position = UDim2.new(0.5, -230, 0, -80)
+				Position = UDim2.new(0.5, 0, 0, -80)
 			})
 			closeTween:Play()
 			closeTween.Completed:Connect(function()
@@ -184,7 +189,7 @@ end
 local activeDuelModal = nil
 
 local function showDuelModal(senderName, timeoutSec)
-	print("[DuelController] ⚔️ Отримано виклик на дуель від: " .. tostring(senderName))
+	print("[DuelController] ⚔️ Duel challenge received from: " .. tostring(senderName))
 	timeoutSec = timeoutSec or 15
 
 	if activeDuelModal and activeDuelModal.Parent then
@@ -199,8 +204,13 @@ local function showDuelModal(senderName, timeoutSec)
 
 	local modal = Instance.new("Frame")
 	modal.Name = "DuelChallengeModal"
-	modal.Size = UDim2.new(0, 380, 0, 200)
-	modal.Position = UDim2.new(0.5, -190, 0.4, -100)
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	modal.Size = UDim2.new(0.85, 0, 0.4, 0)
+	local modalConstraint = Instance.new("UISizeConstraint")
+	modalConstraint.MaxSize = Vector2.new(390, 200)
+	modalConstraint.MinSize = Vector2.new(280, 180)
+	modalConstraint.Parent = modal
+	modal.Position = UDim2.new(0.5, 0, 0.45, 0)
 	modal.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	modal.ZIndex = 1000
 	modal.Parent = screenGui
@@ -248,8 +258,8 @@ local function showDuelModal(senderName, timeoutSec)
 
 	-- Кнопка ПРИЙНЯТИ
 	local acceptBtn = Instance.new("TextButton")
-	acceptBtn.Size = UDim2.new(0, 155, 0, 44)
-	acceptBtn.Position = UDim2.new(0, 25, 0, 130)
+	acceptBtn.Size = UDim2.new(0.42, 0, 0, 42)
+	acceptBtn.Position = UDim2.new(0.06, 0, 1, -54)
 	acceptBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
 	acceptBtn.Text = "⚔️ ACCEPT"
 	acceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -261,8 +271,8 @@ local function showDuelModal(senderName, timeoutSec)
 
 	-- Кнопка ВІДХИЛИТИ
 	local declineBtn = Instance.new("TextButton")
-	declineBtn.Size = UDim2.new(0, 155, 0, 44)
-	declineBtn.Position = UDim2.new(1, -180, 0, 130)
+	declineBtn.Size = UDim2.new(0.42, 0, 0, 42)
+	declineBtn.Position = UDim2.new(0.52, 0, 1, -54)
 	declineBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
 	declineBtn.Text = "✖ DECLINE"
 	declineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -333,8 +343,13 @@ local function showPetSelection(opponentName)
 
 	local modal = Instance.new("Frame")
 	modal.Name = "PetSelectionModal"
-	modal.Size = UDim2.new(0, 500, 0, 360)
-	modal.Position = UDim2.new(0.5, -250, 0.5, -180)
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	modal.Size = UDim2.new(0.85, 0, 0.85, 0)
+	local petModalConstraint = Instance.new("UISizeConstraint")
+	petModalConstraint.MaxSize = Vector2.new(540, 380)
+	petModalConstraint.MinSize = Vector2.new(340, 260)
+	petModalConstraint.Parent = modal
+	modal.Position = UDim2.new(0.5, 0, 0.5, 0)
 	modal.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	modal.ZIndex = 2000
 	modal.Parent = screenGui

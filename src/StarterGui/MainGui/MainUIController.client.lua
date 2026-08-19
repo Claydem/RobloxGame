@@ -14,9 +14,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
--- Вимикаємо стандартний список гравців (Leaderboard), щоб звільнити місце для нашої кнопки меню
-pcall(function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+-- 🔒 Гарантоване вимкнення стандартного списку лідерів (Leaderboard) для звільнення місця кнопці меню
+task.spawn(function()
+	local tries = 0
+	while tries < 30 do
+		local success = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+		end)
+		if success then break end
+		tries += 1
+		task.wait(0.2)
+	end
 end)
 
 local LocalPlayer = Players.LocalPlayer
@@ -90,12 +98,12 @@ local function createStroke(parent, color, thickness)
 	return stroke
 end
 
--- === 1. TOGGLE BUTTON (Top Right Corner - Beside PlayerList) ===
+-- === 1. TOGGLE BUTTON (Top Right Corner - Exactly where Leaderboard was) ===
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Name = "ToggleMenuBtn"
-toggleMenuBtn.Size = UDim2.new(0, 160, 0, 42)
+toggleMenuBtn.Size = UDim2.new(0, 150, 0, 38)
 toggleMenuBtn.AnchorPoint = Vector2.new(1, 0)
-toggleMenuBtn.Position = UDim2.new(1, -15, 0, 14)
+toggleMenuBtn.Position = UDim2.new(1, -16, 0, 12)
 toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 toggleMenuBtn.Text = "🧠 HIDE MENU"
 toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -104,14 +112,20 @@ toggleMenuBtn.Font = Enum.Font.GothamBold
 toggleMenuBtn.ZIndex = 5000
 toggleMenuBtn.Active = true
 toggleMenuBtn.Parent = screenGui
-createCorner(toggleMenuBtn, 10)
+createCorner(toggleMenuBtn, 8)
 createStroke(toggleMenuBtn, Color3.fromRGB(255, 200, 0), 1.5)
 
--- === 2. MAIN FRAME (Centered on screen) ===
+-- === 2. MAIN FRAME (Centered on screen with AnchorPoint & responsive constraints) ===
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 780, 0, 470)
-mainFrame.Position = UDim2.new(0.5, -390, 0.5, -220)
+mainFrame.Size = UDim2.new(0.85, 0, 0.85, 0)
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(780, 480)
+sizeConstraint.MinSize = Vector2.new(420, 280)
+sizeConstraint.Parent = mainFrame
+
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(22, 24, 32)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = true
