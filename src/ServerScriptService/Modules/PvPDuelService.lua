@@ -53,18 +53,18 @@ local function handleDuelChallenge(sender, targetPlayer)
 	duelCooldowns[dbKey] = os.clock() + 1.5 -- 1.5 сек анти-спам
 
 	if sender.UserId == targetPlayer.UserId then
-		DuelNoticeEvent:FireClient(sender, "⚠️ Не можна викликати на дуель самого себе! Підійдіть до іншого живого гравця.")
+		DuelNoticeEvent:FireClient(sender, "⚠️ You cannot challenge yourself to a duel! Approach another player.")
 		return
 	end
 
 	-- 1. Перевірка, чи гравці не в бою
 	if _G.BattleService and _G.BattleService.IsInBattle then
 		if _G.BattleService.IsInBattle(sender) then
-			DuelNoticeEvent:FireClient(sender, "⚔️ Ви вже перебуваєте у бою!")
+			DuelNoticeEvent:FireClient(sender, "⚔️ You are already in a battle!")
 			return
 		end
 		if _G.BattleService.IsInBattle(targetPlayer) then
-			DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s зараз перебуває у бою!", targetPlayer.Name))
+			DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s is currently in a battle!", targetPlayer.Name))
 			return
 		end
 	end
@@ -76,13 +76,13 @@ local function handleDuelChallenge(sender, targetPlayer)
 		local remainSec = math.ceil(cdExp - os.clock())
 		local mins = math.floor(remainSec / 60)
 		local secs = remainSec % 60
-		DuelNoticeEvent:FireClient(sender, string.format("⏳ %s відхилив дуель. Спробуйте знову через %d хв %d сек!", targetPlayer.Name, mins, secs))
+		DuelNoticeEvent:FireClient(sender, string.format("⏳ %s recently declined. Try again in %d min %d sec!", targetPlayer.Name, mins, secs))
 		return
 	end
 
 	-- 3. Перевірка, чи не зайнятий вже гравець іншим викликом
 	if pendingDuels[targetPlayer.UserId] then
-		DuelNoticeEvent:FireClient(sender, string.format("⏳ %s вже розглядає інший виклик на дуель!", targetPlayer.Name))
+		DuelNoticeEvent:FireClient(sender, string.format("⏳ %s is already considering another duel request!", targetPlayer.Name))
 		return
 	end
 
@@ -92,9 +92,9 @@ local function handleDuelChallenge(sender, targetPlayer)
 		timestamp = os.clock()
 	}
 
-	print(string.format("[DuelService] ⚔️ %s надіслав виклик на дуель до %s", sender.Name, targetPlayer.Name))
+	print(string.format("[DuelService] ⚔️ %s sent duel challenge to %s", sender.Name, targetPlayer.Name))
 	DuelRequestEvent:FireClient(targetPlayer, sender.Name, REQUEST_TIMEOUT_SECONDS)
-	DuelNoticeEvent:FireClient(sender, string.format("⚔️ Виклик надіслано до %s! Очікування відповіді...", targetPlayer.Name))
+	DuelNoticeEvent:FireClient(sender, string.format("⚔️ Challenge sent to %s! Waiting for response...", targetPlayer.Name))
 
 	-- 5. Автоматичний тайм-аут через 15 секунд
 	task.delay(REQUEST_TIMEOUT_SECONDS + 1, function()
@@ -102,7 +102,7 @@ local function handleDuelChallenge(sender, targetPlayer)
 		if cur and cur.senderId == sender.UserId then
 			pendingDuels[targetPlayer.UserId] = nil
 			duelCooldowns[cdKey] = os.clock() + DECLINE_COOLDOWN_SECONDS
-			DuelNoticeEvent:FireClient(sender, string.format("⏰ %s не відповів на виклик. Кулдаун: 5 хвилин.", targetPlayer.Name))
+			DuelNoticeEvent:FireClient(sender, string.format("⏰ %s did not respond. Cooldown: 5 minutes.", targetPlayer.Name))
 		end
 	end)
 end
@@ -161,24 +161,24 @@ DuelRespondEvent.OnServerEvent:Connect(function(player, accepted)
 
 	if accepted == true then
 		if sender then
-			print(string.format("[DuelService] ✅ %s прийняв виклик від %s! Запуск бою...", player.Name, sender.Name))
-			DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s прийняв ваш виклик! Телепортація на арену...", player.Name))
-			DuelNoticeEvent:FireClient(player, string.format("⚔️ Ви прийняли виклик %s! Телепортація на арену...", sender.Name))
+			print(string.format("[DuelService] ✅ %s accepted challenge from %s! Starting battle...", player.Name, sender.Name))
+			DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s accepted your challenge! Teleporting to arena...", player.Name))
+			DuelNoticeEvent:FireClient(player, string.format("⚔️ You accepted %s's challenge! Teleporting to arena...", sender.Name))
 
 			task.wait(0.5)
 			if _G.BattleService then
 				_G.BattleService.StartPvPBattle(sender, player)
 			else
-				warn("[DuelService] ❌ BattleService не знайдено!")
+				warn("[DuelService] ❌ BattleService not found!")
 			end
 		end
 	else
 		-- Гравець відхилив дуель — ставимо 5 хвилин кулдауну для того, хто надіслав
 		duelCooldowns[cdKey] = os.clock() + DECLINE_COOLDOWN_SECONDS
-		print(string.format("[DuelService] ❌ %s відхилив дуель від %s (Кулдаун 5 хв)", player.Name, sender and sender.Name or "Unknown"))
+		print(string.format("[DuelService] ❌ %s declined duel from %s (Cooldown 5 min)", player.Name, sender and sender.Name or "Unknown"))
 
 		if sender then
-			DuelNoticeEvent:FireClient(sender, string.format("❌ %s відхилив ваш виклик на дуель. Кулдаун: 5 хвилин.", player.Name))
+			DuelNoticeEvent:FireClient(sender, string.format("❌ %s declined your duel challenge. Cooldown: 5 minutes.", player.Name))
 		end
 	end
 end)

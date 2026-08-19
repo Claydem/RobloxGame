@@ -76,7 +76,31 @@ local DuelRespondEvent = getEvent("DuelRespond")
 local DuelNoticeEvent  = getEvent("DuelNotice")
 local TriggerDuelEvent = getEvent("TriggerDuel")
 
--- (Логіка приховування власного ProximityPrompt видалена, щоб гарантувати, що він з'являтиметься для інших гравців без жодних збоїв)
+-- ── 4. ПРИХОВУВАННЯ ПІДКАЗКИ НА ВЛАСНОМУ ПЕРСОНАЖІ ──
+ProximityPromptService.PromptShown:Connect(function(prompt)
+	if prompt.Name == "DuelPrompt" and LocalPlayer.Character and prompt:IsDescendantOf(LocalPlayer.Character) then
+		prompt.Enabled = false
+	end
+end)
+
+-- Також гарантовано ховаємо при спавні
+local function hideOwnDuelPrompt(char)
+	if not char then return end
+	local function checkPrompt(desc)
+		if desc:IsA("ProximityPrompt") and desc.Name == "DuelPrompt" then
+			desc.Enabled = false
+		end
+	end
+	for _, d in ipairs(char:GetDescendants()) do
+		checkPrompt(d)
+	end
+	char.DescendantAdded:Connect(checkPrompt)
+end
+
+if LocalPlayer.Character then
+	task.spawn(hideOwnDuelPrompt, LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(hideOwnDuelPrompt)
 
 -- ── 5. КЛІЄНТСЬКЕ СПРАЦЮВАННЯ PROXIMITY PROMPT ──
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
@@ -84,7 +108,7 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local targetChar = prompt.Parent:IsA("Model") and prompt.Parent or prompt.Parent.Parent
 		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
 		if targetPlayer and targetPlayer ~= LocalPlayer then
-			print(string.format("[DuelController] 🎯 Кнопка E затиснута на гравцеві %s! Відправка запиту на сервер...", targetPlayer.Name))
+			print(string.format("[DuelUIController] 🎯 Prompt triggered on %s! Sending request...", targetPlayer.Name))
 			playSound("rbxassetid://6895079853", 0.5)
 			if TriggerDuelEvent then
 				TriggerDuelEvent:FireServer(targetPlayer.UserId)
@@ -189,7 +213,7 @@ local function showDuelModal(senderName, timeoutSec)
 	desc.Size = UDim2.new(1, -24, 0, 40)
 	desc.Position = UDim2.new(0, 12, 0, 46)
 	desc.BackgroundTransparency = 1
-	desc.Text = string.format("<b>%s</b> викликає вас на PvP битву!", senderName)
+	desc.Text = string.format("<b>%s</b> is challenging you to a PvP battle!", senderName)
 	desc.TextColor3 = Color3.fromRGB(230, 235, 245)
 	desc.TextSize = 14
 	desc.Font = Enum.Font.GothamMedium
@@ -203,7 +227,7 @@ local function showDuelModal(senderName, timeoutSec)
 	timerLbl.Size = UDim2.new(1, 0, 0, 22)
 	timerLbl.Position = UDim2.new(0, 0, 0, 90)
 	timerLbl.BackgroundTransparency = 1
-	timerLbl.Text = string.format("⏳ Авто-відхилення через: %d сек", timeoutSec)
+	timerLbl.Text = string.format("⏳ Auto-decline in: %d sec", timeoutSec)
 	timerLbl.TextColor3 = Color3.fromRGB(255, 200, 80)
 	timerLbl.TextSize = 12
 	timerLbl.Font = Enum.Font.GothamBold
