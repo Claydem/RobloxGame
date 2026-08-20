@@ -34,7 +34,13 @@ local DEFAULT_DATA = {
 		IncomeBuffEndTime = 0,
 		DamageMultiplier = 1.0,
 		DamageBuffEndTime = 0,
-	}
+	},
+	Stats = {
+		BotWins = 0,
+		BotLosses = 0,
+		DuelWins = 0,
+		DuelLosses = 0,
+	},
 }
 
 local function deepCopy(t)
@@ -97,21 +103,74 @@ function DataManager.AddBrainCells(player: Player, amount: number): boolean
 	end
 	if not data then return false end
 
-	if amount < 0 and math.abs(amount) > data.BrainCells then
-		return false
-	end
-
 	data.BrainCells = data.BrainCells + amount
+	DataManager.UpdateLeaderstats(player)
+	return true
+end
+
+function DataManager.UpdateLeaderstats(player: Player)
+	local data = sessionData[player]
+	if not data then return end
 
 	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local brainCellsVal = leaderstats:FindFirstChild("BrainCells")
-		if brainCellsVal then
-			brainCellsVal.Value = data.BrainCells
+	if not leaderstats then return end
+
+	local brainCellsVal = leaderstats:FindFirstChild("BrainCells")
+	if brainCellsVal then
+		brainCellsVal.Value = data.BrainCells or 0
+	end
+
+	local stats = data.Stats or {}
+	local botWins = stats.BotWins or 0
+	local botLosses = stats.BotLosses or 0
+	local botTotal = botWins + botLosses
+	local botWRPercent = botTotal > 0 and math.floor((botWins / botTotal) * 100) or 0
+
+	local duelWins = stats.DuelWins or 0
+	local duelLosses = stats.DuelLosses or 0
+	local duelTotal = duelWins + duelLosses
+	local duelWRPercent = duelTotal > 0 and math.floor((duelWins / duelTotal) * 100) or 0
+
+	local duelVal = leaderstats:FindFirstChild("Duel WR")
+	if not duelVal then
+		duelVal = Instance.new("StringValue")
+		duelVal.Name = "Duel WR"
+		duelVal.Parent = leaderstats
+	end
+	duelVal.Value = string.format("%d%%", duelWRPercent)
+
+	local botVal = leaderstats:FindFirstChild("Bot WR")
+	if not botVal then
+		botVal = Instance.new("StringValue")
+		botVal.Name = "Bot WR"
+		botVal.Parent = leaderstats
+	end
+	botVal.Value = string.format("%d%%", botWRPercent)
+end
+
+function DataManager.RecordBattleResult(player: Player, isBot: boolean, won: boolean)
+	local data = sessionData[player]
+	if not data then return end
+	data.Stats = data.Stats or { BotWins = 0, BotLosses = 0, DuelWins = 0, DuelLosses = 0 }
+
+	if isBot then
+		if won then
+			data.Stats.BotWins = (data.Stats.BotWins or 0) + 1
+		else
+			data.Stats.BotLosses = (data.Stats.BotLosses or 0) + 1
+		end
+	else
+		if won then
+			data.Stats.DuelWins = (data.Stats.DuelWins or 0) + 1
+		else
+			data.Stats.DuelLosses = (data.Stats.DuelLosses or 0) + 1
 		end
 	end
 
-	return true
+	DataManager.UpdateLeaderstats(player)
+	task.spawn(function()
+		saveData(player)
+	end)
 end
 
 function DataManager.AddUnitToInventory(player: Player, itemId: string, optionalClass: string?)
@@ -227,6 +286,9 @@ local function loadData(player: Player)
 		if not sessionData[player].ActiveBuffs then
 			sessionData[player].ActiveBuffs = deepCopy(DEFAULT_DATA.ActiveBuffs)
 		end
+		if not sessionData[player].Stats then
+			sessionData[player].Stats = deepCopy(DEFAULT_DATA.Stats)
+		end
 		print("[DataManager] 💾 Завантажено збережені дані для " .. player.Name .. " (Предметів в інвентарі: " .. #sessionData[player].Inventory .. ")")
 	else
 		sessionData[player] = deepCopy(DEFAULT_DATA)
@@ -239,8 +301,20 @@ local function loadData(player: Player)
 
 	local brainCells = Instance.new("IntValue")
 	brainCells.Name = "BrainCells"
-	brainCells.Value = sessionData[player].BrainCells
+	brainCells.Value = sessionData[player].BrainCells or 0
 	brainCells.Parent = leaderstats
+
+	local duelVal = Instance.new("StringValue")
+	duelVal.Name = "Duel WR"
+	duelVal.Value = "0%"
+	duelVal.Parent = leaderstats
+
+	local botVal = Instance.new("StringValue")
+	botVal.Name = "Bot WR"
+	botVal.Value = "0%"
+	botVal.Parent = leaderstats
+
+	DataManager.UpdateLeaderstats(player)
 
 	task.delay(1, function()
 		if player:IsDescendantOf(Players) then

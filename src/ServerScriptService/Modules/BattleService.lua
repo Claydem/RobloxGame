@@ -498,6 +498,13 @@ local function runBattle(session)
 			end
 		end
 
+		if session.Player1 then
+			DM.RecordBattleResult(session.Player1, session.IsBot, true)
+		end
+		if session.Player2 and not session.IsBot then
+			DM.RecordBattleResult(session.Player2, false, false)
+		end
+
 	elseif session.Status == "P2_Won" then
 		resultData.Result = "P2_Won"
 		resultData.WinnerSide = "P2"
@@ -538,6 +545,13 @@ local function runBattle(session)
 			for _, uuid in ipairs(partUnits) do
 				DM.AddXPToUnit(session.Player2, uuid, shareXP)
 			end
+		end
+
+		if session.Player1 then
+			DM.RecordBattleResult(session.Player1, session.IsBot, false)
+		end
+		if session.Player2 and not session.IsBot then
+			DM.RecordBattleResult(session.Player2, false, true)
 		end
 	else
 		resultData.Result = "Draw"

@@ -94,7 +94,7 @@ local SOUND_IDS = {
 	CritHit    = "rbxassetid://4612373239",  -- Heavy Explosion Hit
 	Block      = "rbxassetid://4612373077",  -- Metal Shield Clang
 	Swoosh     = "rbxassetid://3370874737",  -- Fast Air Whoosh
-	Victory    = "rbxassetid://1840854453",  -- Triumphant Brass Fanfare
+	Victory    = "rbxassetid://9043887091",  -- Triumphant Orchestral Fanfare (Verified Public)
 	Defeat     = "rbxassetid://1843463175",  -- Dark Defeat Chord
 	Death      = "rbxassetid://5690279431",  -- Heavy KO Punch
 	FightVoice = "rbxassetid://6895079853",  -- Round Start Bell
@@ -203,11 +203,15 @@ local function playSFX(soundName, vol, pitch)
 		local s = Instance.new("Sound")
 		s.SoundId = id
 		s.Volume = vol or 0.8
-		s.PlaybackSpeed = pitch or (0.92 + math.random() * 0.16)
+		if soundName == "Victory" or soundName == "Defeat" then
+			s.PlaybackSpeed = pitch or 1.0
+		else
+			s.PlaybackSpeed = pitch or (0.92 + math.random() * 0.16)
+		end
 		s.Parent = SoundService
 		pcall(function() s:Play() end)
 		s.Ended:Connect(function() s:Destroy() end)
-		task.delay(4, function() if s and s.Parent then s:Destroy() end end)
+		task.delay(6, function() if s and s.Parent then s:Destroy() end end)
 	end)
 end
 
