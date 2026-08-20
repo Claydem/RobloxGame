@@ -14,16 +14,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
--- 🔒 Гарантоване вимкнення стандартного списку лідерів (Leaderboard) для звільнення місця кнопці меню
+print("[GameMenuController] Script started! v3")
+
+-- Disable default Roblox leaderboard
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
 task.spawn(function()
-	local tries = 0
-	while tries < 30 do
-		local success = pcall(function()
+	for i = 1, 20 do
+		task.wait(0.5)
+		pcall(function()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 		end)
-		if success then break end
-		tries += 1
-		task.wait(0.2)
 	end
 end)
 
@@ -68,14 +70,14 @@ end
 screenGui.Enabled = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- 🧹 ЗНИЩУЄМО БУДЬ-ЯКІ ДУБЛІКАТИ ScreenGui "MainGui" У PlayerGui
+-- Destroy duplicate ScreenGuis
 for _, child in ipairs(PlayerGui:GetChildren()) do
 	if child:IsA("ScreenGui") and child.Name == "MainGui" and child ~= screenGui then
 		child:Destroy()
 	end
 end
 
--- 🧹 ОЧИЩАЄМО ДОЧІРНІ GUI ЕЛЕМЕНТИ ВСЕРЕДИНІ ЕКРАНА ДЛЯ УНИКНЕННЯ ДУБЛЮВАННЯ
+-- Clean up leftover UI elements to prevent duplication
 for _, child in ipairs(screenGui:GetChildren()) do
 	if child:IsA("GuiObject") then
 		child:Destroy()
@@ -98,34 +100,147 @@ local function createStroke(parent, color, thickness)
 	return stroke
 end
 
--- === 1. TOGGLE BUTTON (Top Right Corner - Exactly where Leaderboard was) ===
+-- === CUSTOM LEADERBOARD (TOP LEFT — where menu button used to be) ===
+local leaderboardFrame = Instance.new("Frame")
+leaderboardFrame.Name = "CustomLeaderboard"
+leaderboardFrame.Size = UDim2.new(0, 200, 0, 200)
+leaderboardFrame.Position = UDim2.new(0, 10, 0, 10)
+leaderboardFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+leaderboardFrame.BackgroundTransparency = 0.15
+leaderboardFrame.ZIndex = 100
+leaderboardFrame.Parent = screenGui
+createCorner(leaderboardFrame, 10)
+createStroke(leaderboardFrame, Color3.fromRGB(80, 90, 120), 1)
+
+-- Leaderboard header
+local lbHeader = Instance.new("Frame")
+lbHeader.Size = UDim2.new(1, 0, 0, 28)
+lbHeader.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+lbHeader.ZIndex = 101
+lbHeader.Parent = leaderboardFrame
+createCorner(lbHeader, 10)
+
+local lbTitlePeople = Instance.new("TextLabel")
+lbTitlePeople.Size = UDim2.new(0.5, 0, 1, 0)
+lbTitlePeople.BackgroundTransparency = 1
+lbTitlePeople.Text = "People"
+lbTitlePeople.TextColor3 = Color3.fromRGB(200, 200, 220)
+lbTitlePeople.TextSize = 11
+lbTitlePeople.Font = Enum.Font.GothamBold
+lbTitlePeople.ZIndex = 102
+lbTitlePeople.Parent = lbHeader
+
+local lbTitleCells = Instance.new("TextLabel")
+lbTitleCells.Size = UDim2.new(0.5, 0, 1, 0)
+lbTitleCells.Position = UDim2.new(0.5, 0, 0, 0)
+lbTitleCells.BackgroundTransparency = 1
+lbTitleCells.Text = "BrainCells"
+lbTitleCells.TextColor3 = Color3.fromRGB(255, 215, 0)
+lbTitleCells.TextSize = 11
+lbTitleCells.Font = Enum.Font.GothamBold
+lbTitleCells.ZIndex = 102
+lbTitleCells.Parent = lbHeader
+
+-- Leaderboard player list container
+local lbScroll = Instance.new("ScrollingFrame")
+lbScroll.Size = UDim2.new(1, -8, 1, -34)
+lbScroll.Position = UDim2.new(0, 4, 0, 30)
+lbScroll.BackgroundTransparency = 1
+lbScroll.ScrollBarThickness = 3
+lbScroll.ZIndex = 101
+lbScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+lbScroll.Parent = leaderboardFrame
+
+local lbListLayout = Instance.new("UIListLayout")
+lbListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+lbListLayout.Padding = UDim.new(0, 2)
+lbListLayout.Parent = lbScroll
+
+local function refreshLeaderboard()
+	-- Clear old entries
+	for _, c in ipairs(lbScroll:GetChildren()) do
+		if c:IsA("GuiObject") then c:Destroy() end
+	end
+	-- Build entries for each player
+	local sortedPlayers = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ls = p:FindFirstChild("leaderstats")
+		local cells = ls and ls:FindFirstChild("BrainCells")
+		local val = cells and cells.Value or 0
+		table.insert(sortedPlayers, {Name = p.Name, Cells = val})
+	end
+	table.sort(sortedPlayers, function(a, b) return a.Cells > b.Cells end)
+
+	for i, info in ipairs(sortedPlayers) do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 22)
+		row.BackgroundTransparency = (i % 2 == 0) and 0.85 or 1
+		row.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
+		row.ZIndex = 102
+		row.LayoutOrder = i
+		row.Parent = lbScroll
+
+		local nameL = Instance.new("TextLabel")
+		nameL.Size = UDim2.new(0.55, 0, 1, 0)
+		nameL.Position = UDim2.new(0, 4, 0, 0)
+		nameL.BackgroundTransparency = 1
+		nameL.Text = info.Name
+		nameL.TextColor3 = Color3.fromRGB(220, 220, 230)
+		nameL.TextSize = 11
+		nameL.Font = Enum.Font.GothamMedium
+		nameL.TextXAlignment = Enum.TextXAlignment.Left
+		nameL.TextTruncate = Enum.TextTruncate.AtEnd
+		nameL.ZIndex = 103
+		nameL.Parent = row
+
+		local cellsL = Instance.new("TextLabel")
+		cellsL.Size = UDim2.new(0.4, 0, 1, 0)
+		cellsL.Position = UDim2.new(0.58, 0, 0, 0)
+		cellsL.BackgroundTransparency = 1
+		cellsL.Text = tostring(info.Cells)
+		cellsL.TextColor3 = Color3.fromRGB(255, 215, 0)
+		cellsL.TextSize = 11
+		cellsL.Font = Enum.Font.GothamBold
+		cellsL.TextXAlignment = Enum.TextXAlignment.Right
+		cellsL.ZIndex = 103
+		cellsL.Parent = row
+	end
+	lbScroll.CanvasSize = UDim2.new(0, 0, 0, #sortedPlayers * 24)
+end
+
+refreshLeaderboard()
+-- Auto-refresh leaderboard every 5 seconds
+task.spawn(function()
+	while task.wait(5) do
+		pcall(refreshLeaderboard)
+	end
+end)
+Players.PlayerAdded:Connect(function() task.wait(1) refreshLeaderboard() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.5) refreshLeaderboard() end)
+
+-- === 1. TOGGLE BUTTON (TOP RIGHT — where default leaderboard was) ===
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Name = "ToggleMenuBtn"
-toggleMenuBtn.Size = UDim2.new(0, 150, 0, 38)
-toggleMenuBtn.AnchorPoint = Vector2.new(1, 0)
-toggleMenuBtn.Position = UDim2.new(1, -16, 0, 12)
+toggleMenuBtn.Size = UDim2.new(0, 160, 0, 42)
+toggleMenuBtn.Position = UDim2.new(1, -175, 0, 14)
 toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
-toggleMenuBtn.Text = "🧠 HIDE MENU"
+toggleMenuBtn.Text = "HIDE MENU"
 toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
 toggleMenuBtn.TextSize = 13
 toggleMenuBtn.Font = Enum.Font.GothamBold
 toggleMenuBtn.ZIndex = 5000
 toggleMenuBtn.Active = true
 toggleMenuBtn.Parent = screenGui
-createCorner(toggleMenuBtn, 8)
+createCorner(toggleMenuBtn, 10)
 createStroke(toggleMenuBtn, Color3.fromRGB(255, 200, 0), 1.5)
 
--- === 2. MAIN FRAME (Centered on screen with AnchorPoint & responsive constraints) ===
+print("[GameMenuController] Toggle button created at Position:", toggleMenuBtn.Position)
+
+-- === 2. MAIN FRAME (Centered on screen — fixed pixel sizing) ===
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0.85, 0, 0.85, 0)
-local sizeConstraint = Instance.new("UISizeConstraint")
-sizeConstraint.MaxSize = Vector2.new(780, 480)
-sizeConstraint.MinSize = Vector2.new(420, 280)
-sizeConstraint.Parent = mainFrame
-
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Size = UDim2.new(0, 780, 0, 470)
+mainFrame.Position = UDim2.new(0.5, -390, 0.5, -220)
 mainFrame.BackgroundColor3 = Color3.fromRGB(22, 24, 32)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = true
@@ -134,12 +249,14 @@ mainFrame.Parent = screenGui
 createCorner(mainFrame, 12)
 createStroke(mainFrame, Color3.fromRGB(50, 55, 75), 2)
 
+print("[GameMenuController] MainFrame created, Visible:", mainFrame.Visible)
+
 local currentActiveTab = "Gacha"
 local setTab = nil
 
 local function setMenuState(open: boolean)
 	mainFrame.Visible = open
-	toggleMenuBtn.Text = open and "🧠 HIDE MENU" or "🧠 OPEN MENU"
+	toggleMenuBtn.Text = open and "HIDE MENU" or "OPEN MENU"
 	toggleMenuBtn.BackgroundColor3 = open and Color3.fromRGB(30, 35, 50) or Color3.fromRGB(46, 204, 113)
 	toggleMenuBtn.TextColor3 = open and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(255, 255, 255)
 	if open and setTab then
