@@ -479,44 +479,8 @@ if GlobalCaseUnboxedEvent then
 	GlobalCaseUnboxedEvent.OnClientEvent:Connect(function(unboxingPlayerName, unboxingUserId, itemData)
 		print(string.format("[GlobalUnbox] 📦 %s unboxed %s [%s] (%s)", unboxingPlayerName, tostring(itemData.Name), tostring(itemData.Class or "Normal"), tostring(itemData.Rarity or "Common")))
 
-		-- 1. Показуємо яскравий банер усім гравцям на екрані
-		local targetGui = screenGui or PlayerGui:FindFirstChild("MainGui") or PlayerGui:FindFirstChildOfClass("ScreenGui")
-		if targetGui then
-			local banner = Instance.new("Frame")
-			banner.Size = UDim2.new(0, 480, 0, 52)
-			banner.Position = UDim2.new(0.5, -240, 0, -80)
-			banner.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
-			banner.ZIndex = 250
-			banner.Parent = targetGui
-			createCorner(banner, 12)
-			local rColor = itemData.RarityColor or Color3.fromRGB(255, 215, 0)
-			createStroke(banner, rColor, 2)
-
-			local lbl = Instance.new("TextLabel")
-			lbl.Size = UDim2.new(1, -20, 1, 0)
-			lbl.Position = UDim2.new(0, 10, 0, 0)
-			lbl.BackgroundTransparency = 1
-			local icon = itemData.RarityIcon or "⚪"
-			local abilityIcon = itemData.ClassAbilityIcon or ""
-			lbl.Text = string.format("🎉 <b>%s</b> вибив: %s <b>%s</b> %s <i>(%s)</i>", unboxingPlayerName, icon, itemData.Name, abilityIcon, itemData.RarityName or itemData.Rarity or "Common")
-			lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-			lbl.TextSize = 13
-			lbl.Font = Enum.Font.GothamBold
-			lbl.RichText = true
-			lbl.TextWrapped = true
-			lbl.ZIndex = 251
-			lbl.Parent = banner
-
-			banner:TweenPosition(UDim2.new(0.5, -240, 0, 80), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.4, true)
-
-			task.delay(5, function()
-				if banner and banner.Parent then
-					banner:TweenPosition(UDim2.new(0.5, -240, 0, -80), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true)
-					task.wait(0.35)
-					banner:Destroy()
-				end
-			end)
-		end
+		-- Banner removed
+		
 
 		-- 2. Якщо в Хабі є GachaStation — показуємо 3D ефект на п'єдесталі
 		local hub = workspace:FindFirstChild("Hub")
