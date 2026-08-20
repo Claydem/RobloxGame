@@ -369,7 +369,7 @@ grid.CellSize=UDim2.new(0,130,0,60); grid.CellPadding=UDim2.new(0,8,0,8); grid.P
 local teamSlotLabels = {}
 
 local teamSlotsFrame = Instance.new("Frame")
-teamSlotsFrame.Size=UDim2.new(1,-320,0,28); teamSlotsFrame.Position=UDim2.new(0,10,1,-52)
+teamSlotsFrame.Size=UDim2.new(1,-230,0,28); teamSlotsFrame.Position=UDim2.new(0,10,1,-52)
 teamSlotsFrame.BackgroundTransparency=1; teamSlotsFrame.Parent=teamPanel
 for i = 1, 3 do
 	local sl = Instance.new("TextLabel")
@@ -381,17 +381,29 @@ for i = 1, 3 do
 end
 
 local startBattleBtn = Instance.new("TextButton")
-startBattleBtn.Size=UDim2.new(0,145,0,40); startBattleBtn.Position=UDim2.new(1,-305,1,-52)
+startBattleBtn.Size=UDim2.new(0,200,0,40); startBattleBtn.Position=UDim2.new(1,-210,1,-52)
 startBattleBtn.BackgroundColor3=Color3.fromRGB(46,204,113); startBattleBtn.TextColor3=Color3.new(1,1,1)
-startBattleBtn.Text="⚔️ FIND MATCH"; startBattleBtn.TextSize=13; startBattleBtn.Font=Enum.Font.GothamBlack
+startBattleBtn.Text="⚔️ FIND MATCH"; startBattleBtn.TextSize=14; startBattleBtn.Font=Enum.Font.GothamBlack
 startBattleBtn.Parent=teamPanel; corner(startBattleBtn,10)
-stroke(startBattleBtn, Color3.fromRGB(255,215,0), 1.5)
+local startBattleStroke = stroke(startBattleBtn, Color3.fromRGB(255,215,0), 2)
 
-local startBotBtn = Instance.new("TextButton")
-startBotBtn.Size=UDim2.new(0,145,0,40); startBotBtn.Position=UDim2.new(1,-155,1,-52)
-startBotBtn.BackgroundColor3=Color3.fromRGB(231,76,60); startBotBtn.TextColor3=Color3.new(1,1,1)
-startBotBtn.Text="🤖 VS BOT"; startBotBtn.TextSize=13; startBotBtn.Font=Enum.Font.GothamBlack
-startBotBtn.Parent=teamPanel; corner(startBotBtn,10)
+local function getBattleType()
+	return battleGui:GetAttribute("SelectedBattleType") or "PvP"
+end
+
+local function updateStartButton()
+	local bType = getBattleType()
+	local hasSelection = (#selectedTeamUUIDs > 0)
+	if bType == "Bot" then
+		startBattleBtn.Text = "🤖 START BATTLE"
+		startBattleBtn.BackgroundColor3 = hasSelection and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(80, 80, 95)
+		startBattleStroke.Color = Color3.fromRGB(255, 100, 80)
+	else
+		startBattleBtn.Text = "⚔️ FIND MATCH"
+		startBattleBtn.BackgroundColor3 = hasSelection and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(80, 80, 95)
+		startBattleStroke.Color = Color3.fromRGB(255, 215, 0)
+	end
+end
 
 refreshTeamSlots = function()
 	for i = 1, 3 do
@@ -411,11 +423,11 @@ refreshTeamSlots = function()
 			end
 
 			if selectedTeamUUIDs[i] then
-				-- Find name
+				-- Find accurate name with level
 				for _, u in ipairs(cachedInventory) do
 					if u.UUID == selectedTeamUUIDs[i] then
-						local cfg = ItemDB and ItemDB.GetItem(u.ItemId)
-						sl.Text = "Slot " .. i .. ": " .. (cfg and cfg.Name or u.ItemId)
+						local stats = (ItemDB and ItemDB.GetUnitStats and ItemDB.GetUnitStats(u)) or (ItemDB and ItemDB.GetItem(u.ItemId))
+						sl.Text = "Slot " .. i .. ": " .. (stats and stats.Name or u.ItemId) .. " (Lv." .. (u.Level or 1) .. ")"
 						sl.TextColor3 = Color3.fromRGB(46, 204, 113)
 						break
 					end
@@ -426,8 +438,7 @@ refreshTeamSlots = function()
 			end
 		end
 	end
-	startBattleBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 100)
-	startBotBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(100, 100, 100)
+	updateStartButton()
 end
 
 updateCardVisuals = function()
@@ -490,12 +501,12 @@ renderTeamSelect = function()
 	end
 	selectedTeamUUIDs = newSelected
 
-	-- Sort equipped units alphabetically
+	-- Sort equipped units alphabetically using accurate unit stats
 	table.sort(equippedUnits, function(a, b)
-		local cfgA = ItemDB and ItemDB.GetItem(a.ItemId)
-		local cfgB = ItemDB and ItemDB.GetItem(b.ItemId)
-		local nameA = (cfgA and cfgA.Name) or a.ItemId or ""
-		local nameB = (cfgB and cfgB.Name) or b.ItemId or ""
+		local statsA = (ItemDB and ItemDB.GetUnitStats and ItemDB.GetUnitStats(a)) or (ItemDB and ItemDB.GetItem(a.ItemId))
+		local statsB = (ItemDB and ItemDB.GetUnitStats and ItemDB.GetUnitStats(b)) or (ItemDB and ItemDB.GetItem(b.ItemId))
+		local nameA = (statsA and statsA.Name) or a.ItemId or ""
+		local nameB = (statsB and statsB.Name) or b.ItemId or ""
 		return string.lower(nameA) < string.lower(nameB)
 	end)
 
@@ -513,17 +524,20 @@ renderTeamSelect = function()
 	end
 
 	for _, unit in ipairs(equippedUnits) do
-		local cfg = ItemDB and ItemDB.GetItem(unit.ItemId)
-		local name = cfg and cfg.Name or unit.ItemId
+		local stats = (ItemDB and ItemDB.GetUnitStats and ItemDB.GetUnitStats(unit)) or (ItemDB and ItemDB.GetItem(unit.ItemId))
+		local name = stats and stats.Name or unit.ItemId
+		local level = stats and stats.Level or unit.Level or 1
+		local maxHP = stats and stats.MaxHP or 100
+		local damage = stats and stats.Damage or 10
 
 		local btn = Instance.new("TextButton")
-		local classIcon = cfg and cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or ""
-		local rarityIcon = cfg and cfg.RarityConfig and cfg.RarityConfig.Icon or "⚪"
-		local classColor = cfg and cfg.ClassConfig and cfg.ClassConfig.Color
+		local classIcon = stats and stats.ClassConfig and stats.ClassConfig.AbilityIcon or ""
+		local rarityIcon = stats and stats.RarityConfig and stats.RarityConfig.Icon or "⚪"
+		local classColor = stats and stats.ClassConfig and stats.ClassConfig.Color
 		btn.BackgroundColor3 = classColor or Color3.fromRGB(28, 32, 44)
 		btn.TextColor3 = Color3.fromRGB(220,220,230)
 		btn.TextSize = 11; btn.Font = Enum.Font.GothamBold
-		btn.Text = rarityIcon .. " " .. name .. " " .. classIcon .. "\n❤️" .. (cfg and cfg.MaxHP or "?") .. " ⚔️" .. (cfg and cfg.Damage or "?")
+		btn.Text = string.format("%s %s %s\n❤️%d  ⚔️%d  (Lv.%d)", rarityIcon, name, classIcon, maxHP, damage, level)
 		btn.TextWrapped = true; btn.Parent = teamScroll
 		corner(btn, 8)
 		local btnStroke = stroke(btn, Color3.fromRGB(55, 62, 80), 1)
@@ -667,8 +681,7 @@ end
 mmCancelBtn.MouseButton1Click:Connect(function()
 	stopQueueUI()
 	teamPanel.Visible = true
-	startBattleBtn.Text = "⚔️ START BATTLE"
-	startBattleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	updateStartButton()
 	local leaveEvent = Events and Events:FindFirstChild("LeaveMatchmakingQueue")
 	if leaveEvent then
 		leaveEvent:FireServer()
@@ -692,14 +705,13 @@ end
 startBattleBtn.MouseButton1Click:Connect(function()
 	if #selectedTeamUUIDs == 0 then return end
 	
-	local joinQueue = Events and Events:FindFirstChild("JoinMatchmakingQueue")
-	if joinQueue then
-		joinQueue:FireServer(selectedTeamUUIDs, selectedTeamSize)
-		startQueueUI()
-	else
+	local bType = getBattleType()
+	if bType == "Bot" then
+		-- Direct Bot Battle
 		startBattleBtn.Text = "⏳ Loading..."
-		startBattleBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+		startBattleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 		startBattleBGM()
+
 		local StartBattle = Events and Events:FindFirstChild("StartBattle")
 		if StartBattle then
 			local ok, res = pcall(function()
@@ -709,34 +721,31 @@ startBattleBtn.MouseButton1Click:Connect(function()
 				teamPanel.Visible = false
 			else
 				startBattleBtn.Text = "❌ " .. (res and res.Error or "Error!")
-				task.delay(2, function()
-					startBattleBtn.Text = "⚔️ START BATTLE"
-					startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
-				end)
+				task.delay(2, updateStartButton)
 			end
 		end
-	end
-end)
-
-startBotBtn.MouseButton1Click:Connect(function()
-	if #selectedTeamUUIDs == 0 then return end
-	startBotBtn.Text = "⏳ Loading..."
-	startBotBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
-	startBattleBGM()
-
-	local StartBattle = Events and Events:FindFirstChild("StartBattle")
-	if StartBattle then
-		local ok, res = pcall(function()
-			return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
-		end)
-		if ok and res and res.Success then
-			teamPanel.Visible = false
+	else
+		-- PvP Matchmaking Queue
+		local joinQueue = Events and Events:FindFirstChild("JoinMatchmakingQueue")
+		if joinQueue then
+			joinQueue:FireServer(selectedTeamUUIDs, selectedTeamSize)
+			startQueueUI()
 		else
-			startBotBtn.Text = "❌ " .. (res and res.Error or "Error!")
-			task.delay(2, function()
-				startBotBtn.Text = "🤖 VS BOT"
-				startBotBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-			end)
+			startBattleBtn.Text = "⏳ Loading..."
+			startBattleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			startBattleBGM()
+			local StartBattle = Events and Events:FindFirstChild("StartBattle")
+			if StartBattle then
+				local ok, res = pcall(function()
+					return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
+				end)
+				if ok and res and res.Success then
+					teamPanel.Visible = false
+				else
+					startBattleBtn.Text = "❌ " .. (res and res.Error or "Error!")
+					task.delay(2, updateStartButton)
+				end
+			end
 		end
 	end
 end)
@@ -1575,10 +1584,7 @@ battleGui:GetPropertyChangedSignal(changePropName):Connect(function()
 		hideAllPanels()
 		renderTeamSelect()
 		teamPanel.Visible = true
-		startBattleBtn.Text = "⚔️ FIND MATCH"
-		startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
-		startBotBtn.Text = "🤖 VS BOT"
-		startBotBtn.BackgroundColor3 = Color3.fromRGB(231,76,60)
+		updateStartButton()
 	else
 		stopBattleBGM()
 	end

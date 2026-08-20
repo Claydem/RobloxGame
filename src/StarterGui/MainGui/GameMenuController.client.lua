@@ -1352,7 +1352,7 @@ task.spawn(function()
 		end)
 	end
 
-	local function openBattleGui()
+	local function openBattleGui(battleMode)
 		local battleGuiScreen = PlayerGui:FindFirstChild("BattleGui")
 		if not battleGuiScreen or not battleGuiScreen:IsA("ScreenGui") then
 			for _, child in ipairs(PlayerGui:GetChildren()) do
@@ -1364,6 +1364,7 @@ task.spawn(function()
 		end
 
 		if battleGuiScreen and battleGuiScreen:IsA("ScreenGui") then
+			battleGuiScreen:SetAttribute("SelectedBattleType", battleMode or "PvP")
 			battleGuiScreen.Enabled = false
 			task.wait()
 			battleGuiScreen.Enabled = true
@@ -1372,8 +1373,12 @@ task.spawn(function()
 		end
 	end
 
-	btnStartBattle.MouseButton1Click:Connect(openBattleGui)
-	btnStartBotBattle.MouseButton1Click:Connect(openBattleGui)
+	btnStartBattle.MouseButton1Click:Connect(function()
+		openBattleGui("PvP")
+	end)
+	btnStartBotBattle.MouseButton1Click:Connect(function()
+		openBattleGui("Bot")
+	end)
 
 	btnSubmitTurn.MouseButton1Click:Connect(function()
 		if not selectedAttackZone or not selectedDefenseZone or not SubmitTurnEvent then return end
