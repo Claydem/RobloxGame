@@ -114,9 +114,25 @@ if LocalPlayer.Character then
 end
 LocalPlayer.CharacterAdded:Connect(hideOwnDuelPrompt)
 
+-- Disable prompts during battles
+task.spawn(function()
+	local battleGui = PlayerGui:WaitForChild("BattleGui", 10)
+	if battleGui and battleGui:IsA("ScreenGui") then
+		battleGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+			ProximityPromptService.Enabled = not battleGui.Enabled
+		end)
+		ProximityPromptService.Enabled = not battleGui.Enabled
+	end
+end)
+
 -- ── 5. КЛІЄНТСЬКЕ СПРАЦЮВАННЯ PROXIMITY PROMPT ──
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	if prompt.Name == "DuelPrompt" and prompt.Parent then
+		local bGui = PlayerGui:FindFirstChild("BattleGui")
+		if bGui and bGui:IsA("ScreenGui") and bGui.Enabled then
+			return -- Disallow duel prompts while in battle
+		end
+
 		local targetChar = prompt.Parent:IsA("Model") and prompt.Parent or prompt.Parent.Parent
 		local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
 		if targetPlayer and targetPlayer ~= LocalPlayer then

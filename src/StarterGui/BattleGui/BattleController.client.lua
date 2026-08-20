@@ -1137,29 +1137,39 @@ end
 local mySide = "P1"
 
 local function updateHP(data)
-	if data.P1_Unit then
-		local r = math.clamp(data.P1_Unit.HP / data.P1_Unit.MaxHP, 0, 1)
+	local currentSide = data.YourSide or mySide or "P1"
+	local myUnit = (currentSide == "P1") and data.P1_Unit or data.P2_Unit
+	local enemyUnit = (currentSide == "P1") and data.P2_Unit or data.P1_Unit
+
+	local myAlive = (currentSide == "P1") and data.P1_Alive or data.P2_Alive
+	local myTeamSize = (currentSide == "P1") and data.P1_TeamSize or data.P2_TeamSize
+	local enemyAlive = (currentSide == "P1") and data.P2_Alive or data.P1_Alive
+	local enemyTeamSize = (currentSide == "P1") and data.P2_TeamSize or data.P1_TeamSize
+
+	if myUnit then
+		local r = math.clamp(myUnit.HP / math.max(1, myUnit.MaxHP), 0, 1)
 		tw(p1Fill, {Size=UDim2.new(r,0,1,0)}, 0.4)
-		p1HpLbl.Text = data.P1_Unit.HP.."/"..data.P1_Unit.MaxHP
-		local classIcon = data.P1_Unit.ClassConfig and data.P1_Unit.ClassConfig.AbilityIcon or ""
-		p1Name.Text = "🟢 "..data.P1_Unit.Name .. (classIcon ~= "" and " " .. classIcon or "")
+		p1HpLbl.Text = myUnit.HP.."/"..myUnit.MaxHP
+		local classIcon = myUnit.ClassConfig and myUnit.ClassConfig.AbilityIcon or ""
+		p1Name.Text = "🟢 "..myUnit.Name .. (classIcon ~= "" and " " .. classIcon or "") .. " (You)"
 		p1Fill.BackgroundColor3 = r>0.5 and Color3.fromRGB(46,204,113) or r>0.25 and Color3.fromRGB(241,196,15) or Color3.fromRGB(231,76,60)
 	end
-	if data.P2_Unit then
-		local r = math.clamp(data.P2_Unit.HP / data.P2_Unit.MaxHP, 0, 1)
+	if enemyUnit then
+		local r = math.clamp(enemyUnit.HP / math.max(1, enemyUnit.MaxHP), 0, 1)
 		tw(p2Fill, {Size=UDim2.new(r,0,1,0)}, 0.4)
-		p2HpLbl.Text = data.P2_Unit.HP.."/"..data.P2_Unit.MaxHP
-		local classIcon = data.P2_Unit.ClassConfig and data.P2_Unit.ClassConfig.AbilityIcon or ""
-		p2Name.Text = "🔴 "..data.P2_Unit.Name .. (classIcon ~= "" and " " .. classIcon or "")
+		p2HpLbl.Text = enemyUnit.HP.."/"..enemyUnit.MaxHP
+		local classIcon = enemyUnit.ClassConfig and enemyUnit.ClassConfig.AbilityIcon or ""
+		p2Name.Text = "🔴 "..enemyUnit.Name .. (classIcon ~= "" and " " .. classIcon or "") .. " (Enemy)"
+		p2Fill.BackgroundColor3 = r>0.5 and Color3.fromRGB(231,76,60) or r>0.25 and Color3.fromRGB(200,60,50) or Color3.fromRGB(150,30,30)
 	end
-	if data.P1_Alive and data.P1_TeamSize then
+	if myAlive and myTeamSize then
 		local dots = ""
-		for i = 1, data.P1_TeamSize do dots = dots .. (i <= data.P1_Alive and "💚" or "💀") end
+		for i = 1, myTeamSize do dots = dots .. (i <= myAlive and "💚" or "💀") end
 		p1Dots.Text = dots
 	end
-	if data.P2_Alive and data.P2_TeamSize then
+	if enemyAlive and enemyTeamSize then
 		local dots = ""
-		for i = 1, data.P2_TeamSize do dots = dots .. (i <= data.P2_Alive and "❤️" or "💀") end
+		for i = 1, enemyTeamSize do dots = dots .. (i <= enemyAlive and "❤️" or "💀") end
 		p2Dots.Text = dots
 	end
 end

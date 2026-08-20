@@ -43,6 +43,21 @@ local DuelRespondEvent = getOrCreateEvent("DuelRespond")
 local DuelNoticeEvent  = getOrCreateEvent("DuelNotice")
 local TriggerDuelEvent = getOrCreateEvent("TriggerDuel")
 
+local function isPlayerInBattle(player)
+	if not player then return false end
+	local BS = _G.BattleService
+	if not BS then
+		local ok, mod = pcall(function()
+			return require(game:GetService("ServerScriptService"):WaitForChild("Modules"):WaitForChild("BattleService"))
+		end)
+		if ok then BS = mod end
+	end
+	if BS and BS.IsInBattle then
+		return BS.IsInBattle(player)
+	end
+	return false
+end
+
 -- ── ЄДИНА ЛОГІКА НАДСИЛАННЯ ВИКЛИКУ НА ДУЕЛЬ ──
 local function handleDuelChallenge(sender, targetPlayer)
 	if not sender or not targetPlayer or not sender.Parent or not targetPlayer.Parent then return end
@@ -58,15 +73,13 @@ local function handleDuelChallenge(sender, targetPlayer)
 	end
 
 	-- 1. Перевірка, чи гравці не в бою
-	if _G.BattleService and _G.BattleService.IsInBattle then
-		if _G.BattleService.IsInBattle(sender) then
-			DuelNoticeEvent:FireClient(sender, "⚔️ You are already in a battle!")
-			return
-		end
-		if _G.BattleService.IsInBattle(targetPlayer) then
-			DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s is currently in a battle!", targetPlayer.Name))
-			return
-		end
+	if isPlayerInBattle(sender) then
+		DuelNoticeEvent:FireClient(sender, "⚔️ You cannot duel while in a battle!")
+		return
+	end
+	if isPlayerInBattle(targetPlayer) then
+		DuelNoticeEvent:FireClient(sender, string.format("⚔️ %s is currently in a battle!", targetPlayer.Name))
+		return
 	end
 
 	-- 2. Перевірка 5-хвилинного кулдауну
