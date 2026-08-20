@@ -100,44 +100,62 @@ local function createStroke(parent, color, thickness)
 	return stroke
 end
 
--- === CUSTOM LEADERBOARD (TOP LEFT — where menu button used to be) ===
+-- === CUSTOM LEADERBOARD (TOP LEFT — mimics default Roblox style) ===
 local leaderboardFrame = Instance.new("Frame")
 leaderboardFrame.Name = "CustomLeaderboard"
 leaderboardFrame.Size = UDim2.new(0, 200, 0, 200)
 leaderboardFrame.Position = UDim2.new(0, 10, 0, 10)
-leaderboardFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-leaderboardFrame.BackgroundTransparency = 0.15
+leaderboardFrame.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+leaderboardFrame.BackgroundTransparency = 0.3
 leaderboardFrame.ZIndex = 100
 leaderboardFrame.Parent = screenGui
-createCorner(leaderboardFrame, 10)
-createStroke(leaderboardFrame, Color3.fromRGB(80, 90, 120), 1)
+createCorner(leaderboardFrame, 8)
+
+-- Close/toggle button for leaderboard (X in top-right corner)
+local lbCloseBtn = Instance.new("TextButton")
+lbCloseBtn.Size = UDim2.new(0, 22, 0, 22)
+lbCloseBtn.Position = UDim2.new(1, -26, 0, 4)
+lbCloseBtn.BackgroundTransparency = 1
+lbCloseBtn.Text = "X"
+lbCloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+lbCloseBtn.TextSize = 14
+lbCloseBtn.Font = Enum.Font.GothamBold
+lbCloseBtn.ZIndex = 105
+lbCloseBtn.Parent = leaderboardFrame
+lbCloseBtn.MouseButton1Click:Connect(function()
+	leaderboardFrame.Visible = not leaderboardFrame.Visible
+end)
 
 -- Leaderboard header
 local lbHeader = Instance.new("Frame")
 lbHeader.Size = UDim2.new(1, 0, 0, 28)
-lbHeader.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+lbHeader.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+lbHeader.BackgroundTransparency = 0.2
 lbHeader.ZIndex = 101
 lbHeader.Parent = leaderboardFrame
-createCorner(lbHeader, 10)
+createCorner(lbHeader, 8)
 
 local lbTitlePeople = Instance.new("TextLabel")
-lbTitlePeople.Size = UDim2.new(0.5, 0, 1, 0)
+lbTitlePeople.Size = UDim2.new(0.5, -14, 1, 0)
+lbTitlePeople.Position = UDim2.new(0, 8, 0, 0)
 lbTitlePeople.BackgroundTransparency = 1
 lbTitlePeople.Text = "People"
-lbTitlePeople.TextColor3 = Color3.fromRGB(200, 200, 220)
-lbTitlePeople.TextSize = 11
+lbTitlePeople.TextColor3 = Color3.fromRGB(255, 255, 255)
+lbTitlePeople.TextSize = 12
 lbTitlePeople.Font = Enum.Font.GothamBold
+lbTitlePeople.TextXAlignment = Enum.TextXAlignment.Left
 lbTitlePeople.ZIndex = 102
 lbTitlePeople.Parent = lbHeader
 
 local lbTitleCells = Instance.new("TextLabel")
-lbTitleCells.Size = UDim2.new(0.5, 0, 1, 0)
+lbTitleCells.Size = UDim2.new(0.5, -14, 1, 0)
 lbTitleCells.Position = UDim2.new(0.5, 0, 0, 0)
 lbTitleCells.BackgroundTransparency = 1
 lbTitleCells.Text = "BrainCells"
-lbTitleCells.TextColor3 = Color3.fromRGB(255, 215, 0)
-lbTitleCells.TextSize = 11
+lbTitleCells.TextColor3 = Color3.fromRGB(255, 255, 255)
+lbTitleCells.TextSize = 12
 lbTitleCells.Font = Enum.Font.GothamBold
+lbTitleCells.TextXAlignment = Enum.TextXAlignment.Right
 lbTitleCells.ZIndex = 102
 lbTitleCells.Parent = lbHeader
 
@@ -742,7 +760,7 @@ task.spawn(function()
 		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		closeBtn.TextSize = 16
 		closeBtn.Font = Enum.Font.GothamBold
-		closeBtn.ZIndex = 11
+		closeBtn.ZIndex = 15
 		closeBtn.Parent = inspectionPanel
 		createCorner(closeBtn, 8)
 		closeBtn.MouseButton1Click:Connect(closeInspectionPanel)
@@ -752,7 +770,7 @@ task.spawn(function()
 		headerFrame.Size = UDim2.new(1, -16, 0, 52)
 		headerFrame.Position = UDim2.new(0, 8, 0, 8)
 		headerFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
-		headerFrame.ZIndex = 11
+		headerFrame.ZIndex = 12
 		headerFrame.Parent = inspectionPanel
 		createCorner(headerFrame, 10)
 		createStroke(headerFrame, rarityColor, 2)
@@ -1394,7 +1412,7 @@ task.spawn(function()
 			local now = os.time()
 			local textList = {}
 			if buffs and (buffs.IncomeBuffEndTime or 0) > now then
-				table.insert(textList, string.format("🌟 x2 Дохід (%ds)", buffs.IncomeBuffEndTime - now))
+				table.insert(textList, string.format("x2 Income (%ds)", buffs.IncomeBuffEndTime - now))
 			end
 			if buffs and (buffs.DamageBuffEndTime or 0) > now then
 				table.insert(textList, string.format("🧪 +25%% DMG (%ds)", buffs.DamageBuffEndTime - now))
