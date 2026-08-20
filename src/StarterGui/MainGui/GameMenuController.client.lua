@@ -1345,6 +1345,30 @@ task.spawn(function()
 		SubmitTurnEvent:FireServer(selectedAttackZone, selectedDefenseZone)
 	end)
 
+	local BattleEnd = EventsFolder:WaitForChild("BattleEnd", 5) or EventsFolder:FindFirstChild("BattleEnd")
+	if BattleEnd then
+		BattleEnd.OnClientEvent:Connect(function(data)
+			task.delay(5.0, function()
+				toggleMenuBtn.Visible = true
+			end)
+		end)
+	end
+
+	-- Always restore toggleMenuBtn when BattleGui is disabled
+	task.spawn(function()
+		local battleGui = PlayerGui:WaitForChild("BattleGui", 10)
+		if battleGui then
+			local prop = battleGui:IsA("ScreenGui") and "Enabled" or "Visible"
+			battleGui:GetPropertyChangedSignal(prop):Connect(function()
+				local isVis = battleGui:IsA("ScreenGui") and battleGui.Enabled or battleGui.Visible
+				if not isVis then
+					task.wait(0.1)
+					toggleMenuBtn.Visible = true
+				end
+			end)
+		end
+	end)
+
 	if BattleStateUpdate then
 		BattleStateUpdate.OnClientEvent:Connect(function(session)
 			p1HPLabel.Text = string.format("%s: %d/%d HP", session.P1_Name or "?", session.P1_HP or 0, session.P1_MaxHP or 0)

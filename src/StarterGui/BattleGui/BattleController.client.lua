@@ -50,6 +50,15 @@ end
 
 local function setBattleGuiVisible(visible: boolean)
 	battleGui.Enabled = visible
+	if not visible then
+		local mainGui = PlayerGui:FindFirstChild("MainGui")
+		if mainGui then
+			local toggleBtn = mainGui:FindFirstChild("ToggleMenuBtn", true)
+			if toggleBtn then
+				toggleBtn.Visible = true
+			end
+		end
+	end
 end
 
 local function isBattleGuiVisible()
@@ -276,9 +285,24 @@ teamPanel.Visible=false; teamPanel.Parent=main; corner(teamPanel,16)
 stroke(teamPanel, Color3.fromRGB(255,215,0), 2)
 
 local teamTitle = Instance.new("TextLabel")
-teamTitle.Size=UDim2.new(1,0,0,28); teamTitle.BackgroundTransparency=1
+teamTitle.Size=UDim2.new(1,-40,0,28); teamTitle.BackgroundTransparency=1
 teamTitle.Text="⚔️ SELECT BATTLE MODE & TEAM"; teamTitle.TextColor3=Color3.fromRGB(255,215,0)
 teamTitle.TextSize=14; teamTitle.Font=Enum.Font.GothamBold; teamTitle.Parent=teamPanel
+
+local teamCloseBtn = Instance.new("TextButton")
+teamCloseBtn.Size = UDim2.new(0, 28, 0, 28)
+teamCloseBtn.Position = UDim2.new(1, -34, 0, 6)
+teamCloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+teamCloseBtn.Text = "✕"
+teamCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+teamCloseBtn.TextSize = 14
+teamCloseBtn.Font = Enum.Font.GothamBold
+teamCloseBtn.ZIndex = 5
+teamCloseBtn.Parent = teamPanel
+corner(teamCloseBtn, 6)
+teamCloseBtn.MouseButton1Click:Connect(function()
+	setBattleGuiVisible(false)
+end)
 
 -- Battle mode selector: 1v1 or 3v3
 local selectedTeamSize = 3
