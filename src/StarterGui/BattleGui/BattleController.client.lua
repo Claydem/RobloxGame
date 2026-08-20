@@ -328,10 +328,8 @@ local selectedTeamUUIDs = {}
 
 local function setMode(size)
 	selectedTeamSize = size
-	-- Зберігаємо попередній вибір, але обрізаємо до нового ліміту
-	while #selectedTeamUUIDs > selectedTeamSize do
-		table.remove(selectedTeamUUIDs)
-	end
+	-- Скидаємо вибір повністю при зміні 1v1 / 3v3
+	selectedTeamUUIDs = {}
 
 	if size == 1 then
 		btn1v1.BackgroundColor3 = Color3.fromRGB(55,65,85)
@@ -364,7 +362,7 @@ grid.CellSize=UDim2.new(0,130,0,60); grid.CellPadding=UDim2.new(0,8,0,8); grid.P
 local teamSlotLabels = {}
 
 local teamSlotsFrame = Instance.new("Frame")
-teamSlotsFrame.Size=UDim2.new(1,-20,0,28); teamSlotsFrame.Position=UDim2.new(0,10,1,-52)
+teamSlotsFrame.Size=UDim2.new(1,-320,0,28); teamSlotsFrame.Position=UDim2.new(0,10,1,-52)
 teamSlotsFrame.BackgroundTransparency=1; teamSlotsFrame.Parent=teamPanel
 for i = 1, 3 do
 	local sl = Instance.new("TextLabel")
@@ -376,10 +374,17 @@ for i = 1, 3 do
 end
 
 local startBattleBtn = Instance.new("TextButton")
-startBattleBtn.Size=UDim2.new(0,200,0,40); startBattleBtn.Position=UDim2.new(1,-210,1,-52)
-startBattleBtn.BackgroundColor3=Color3.fromRGB(231,76,60); startBattleBtn.TextColor3=Color3.new(1,1,1)
-startBattleBtn.Text="⚔️ START BATTLE"; startBattleBtn.TextSize=15; startBattleBtn.Font=Enum.Font.GothamBlack
+startBattleBtn.Size=UDim2.new(0,145,0,40); startBattleBtn.Position=UDim2.new(1,-305,1,-52)
+startBattleBtn.BackgroundColor3=Color3.fromRGB(46,204,113); startBattleBtn.TextColor3=Color3.new(1,1,1)
+startBattleBtn.Text="⚔️ FIND MATCH"; startBattleBtn.TextSize=13; startBattleBtn.Font=Enum.Font.GothamBlack
 startBattleBtn.Parent=teamPanel; corner(startBattleBtn,10)
+stroke(startBattleBtn, Color3.fromRGB(255,215,0), 1.5)
+
+local startBotBtn = Instance.new("TextButton")
+startBotBtn.Size=UDim2.new(0,145,0,40); startBotBtn.Position=UDim2.new(1,-155,1,-52)
+startBotBtn.BackgroundColor3=Color3.fromRGB(231,76,60); startBotBtn.TextColor3=Color3.new(1,1,1)
+startBotBtn.Text="🤖 VS BOT"; startBotBtn.TextSize=13; startBotBtn.Font=Enum.Font.GothamBlack
+startBotBtn.Parent=teamPanel; corner(startBotBtn,10)
 
 local function refreshTeamSlots()
 	for i = 1, 3 do
@@ -486,12 +491,6 @@ local function renderTeamSelect()
 				isAutoSelected = true
 				break
 			end
-		end
-
-		-- Auto-select if we have space
-		if not isAutoSelected and #selectedTeamUUIDs < selectedTeamSize then
-			table.insert(selectedTeamUUIDs, unit.UUID)
-			isAutoSelected = true
 		end
 
 		local btn = Instance.new("TextButton")
@@ -668,6 +667,29 @@ startBattleBtn.MouseButton1Click:Connect(function()
 					startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
 				end)
 			end
+		end
+	end
+end)
+
+startBotBtn.MouseButton1Click:Connect(function()
+	if #selectedTeamUUIDs == 0 then return end
+	startBotBtn.Text = "⏳ Loading..."
+	startBotBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+	startBattleBGM()
+
+	local StartBattle = Events and Events:FindFirstChild("StartBattle")
+	if StartBattle then
+		local ok, res = pcall(function()
+			return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
+		end)
+		if ok and res and res.Success then
+			teamPanel.Visible = false
+		else
+			startBotBtn.Text = "❌ " .. (res and res.Error or "Error!")
+			task.delay(2, function()
+				startBotBtn.Text = "🤖 VS BOT"
+				startBotBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+			end)
 		end
 	end
 end)

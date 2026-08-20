@@ -322,27 +322,49 @@ lobbySubFrame.Size = UDim2.new(1, 0, 1, 0)
 lobbySubFrame.BackgroundTransparency = 1
 lobbySubFrame.Parent = battleFrame
 
-local btnStartBotBattle = Instance.new("TextButton")
-btnStartBotBattle.Size = UDim2.new(0, 260, 0, 52)
-btnStartBotBattle.Position = UDim2.new(0.5, -130, 0.35, 0)
-btnStartBotBattle.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-btnStartBotBattle.Text = "⚔️ BATTLE"
-btnStartBotBattle.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnStartBotBattle.TextSize = 18
-btnStartBotBattle.Font = Enum.Font.GothamBlack
-btnStartBotBattle.Parent = lobbySubFrame
-createCorner(btnStartBotBattle, 12)
-createStroke(btnStartBotBattle, Color3.fromRGB(255, 215, 0), 2)
+local btnStartBattle = Instance.new("TextButton")
+btnStartBattle.Size = UDim2.new(0, 260, 0, 48)
+btnStartBattle.Position = UDim2.new(0.5, -130, 0.20, 0)
+btnStartBattle.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+btnStartBattle.Text = "⚔️ BATTLE"
+btnStartBattle.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnStartBattle.TextSize = 17
+btnStartBattle.Font = Enum.Font.GothamBlack
+btnStartBattle.Parent = lobbySubFrame
+createCorner(btnStartBattle, 10)
+createStroke(btnStartBattle, Color3.fromRGB(255, 215, 0), 2)
 
 local battleHint = Instance.new("TextLabel")
-battleHint.Size = UDim2.new(0, 300, 0, 24)
-battleHint.Position = UDim2.new(0.5, -150, 0.35, 60)
+battleHint.Size = UDim2.new(0, 300, 0, 20)
+battleHint.Position = UDim2.new(0.5, -150, 0.20, 50)
 battleHint.BackgroundTransparency = 1
-battleHint.Text = "⚡ Instant PvP Matchmaking with players"
+battleHint.Text = "⚡ PvP Matchmaking with players"
 battleHint.TextColor3 = Color3.fromRGB(180, 185, 205)
 battleHint.TextSize = 11
 battleHint.Font = Enum.Font.GothamMedium
 battleHint.Parent = lobbySubFrame
+
+local btnStartBotBattle = Instance.new("TextButton")
+btnStartBotBattle.Size = UDim2.new(0, 260, 0, 48)
+btnStartBotBattle.Position = UDim2.new(0.5, -130, 0.52, 0)
+btnStartBotBattle.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+btnStartBotBattle.Text = "🤖 BATTLE VS BOT"
+btnStartBotBattle.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnStartBotBattle.TextSize = 16
+btnStartBotBattle.Font = Enum.Font.GothamBold
+btnStartBotBattle.Parent = lobbySubFrame
+createCorner(btnStartBotBattle, 10)
+createStroke(btnStartBotBattle, Color3.fromRGB(255, 100, 80), 1.5)
+
+local botHint = Instance.new("TextLabel")
+botHint.Size = UDim2.new(0, 300, 0, 20)
+botHint.Position = UDim2.new(0.5, -150, 0.52, 50)
+botHint.BackgroundTransparency = 1
+botHint.Text = "🎯 Solo training match against AI"
+botHint.TextColor3 = Color3.fromRGB(180, 185, 205)
+botHint.TextSize = 11
+botHint.Font = Enum.Font.GothamMedium
+botHint.Parent = lobbySubFrame
 
 local arenaSubFrame = Instance.new("Frame")
 arenaSubFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -1330,8 +1352,7 @@ task.spawn(function()
 		end)
 	end
 
-	btnStartBotBattle.MouseButton1Click:Connect(function()
-		-- Відкриваємо BattleGui для вибору команди
+	local function openBattleGui()
 		local battleGuiScreen = PlayerGui:FindFirstChild("BattleGui")
 		if not battleGuiScreen or not battleGuiScreen:IsA("ScreenGui") then
 			for _, child in ipairs(PlayerGui:GetChildren()) do
@@ -1349,7 +1370,10 @@ task.spawn(function()
 			setMenuState(false)
 			toggleMenuBtn.Visible = false
 		end
-	end)
+	end
+
+	btnStartBattle.MouseButton1Click:Connect(openBattleGui)
+	btnStartBotBattle.MouseButton1Click:Connect(openBattleGui)
 
 	btnSubmitTurn.MouseButton1Click:Connect(function()
 		if not selectedAttackZone or not selectedDefenseZone or not SubmitTurnEvent then return end
