@@ -118,6 +118,16 @@ function DataManager.AddUnitToInventory(player: Player, itemId: string, optional
 	local data = sessionData[player]
 	if not data then return nil end
 
+	local MAX_CARE_ZONE = 12
+	local equippedCount = 0
+	for _, u in ipairs(data.Inventory or {}) do
+		if u.Equipped then
+			equippedCount = equippedCount + 1
+		end
+	end
+
+	local shouldEquip = (equippedCount < MAX_CARE_ZONE)
+
 	local newUnit = {
 		UUID = HttpService:GenerateGUID(false),
 		ItemId = itemId,
@@ -125,7 +135,7 @@ function DataManager.AddUnitToInventory(player: Player, itemId: string, optional
 		Level = 1,
 		XP = 0,
 		Hunger = 100,
-		Equipped = true,
+		Equipped = shouldEquip,
 	}
 
 	table.insert(data.Inventory, newUnit)
@@ -198,6 +208,18 @@ local function loadData(player: Player)
 		sessionData[player] = savedData
 		if not sessionData[player].Inventory then
 			sessionData[player].Inventory = {}
+		else
+			-- Cap equipped pets to max 12 if over limit from legacy data
+			local MAX_CARE_ZONE = 12
+			local equippedCount = 0
+			for _, unit in ipairs(sessionData[player].Inventory) do
+				if unit.Equipped then
+					equippedCount = equippedCount + 1
+					if equippedCount > MAX_CARE_ZONE then
+						unit.Equipped = false
+					end
+				end
+			end
 		end
 		if not sessionData[player].Consumables then
 			sessionData[player].Consumables = deepCopy(DEFAULT_DATA.Consumables)
