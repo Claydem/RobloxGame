@@ -584,7 +584,6 @@ task.spawn(function()
 			brainCellsVal.Changed:Connect(updateCurrency)
 			updateCurrency()
 		end
-		end)
 	end
 end)
 
