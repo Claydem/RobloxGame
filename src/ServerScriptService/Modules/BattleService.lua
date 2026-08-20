@@ -754,8 +754,10 @@ function BattleService.IsInBattle(player)
 	return playerBattles[player] ~= nil
 end
 
-function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids)
+function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids, targetTeamSize)
 	if playerBattles[p1] or playerBattles[p2] then return end
+
+	local limit = math.clamp(targetTeamSize or (#p1_uuids > 0 and #p1_uuids) or 3, 1, 3)
 
 	local DM = getDataManager()
 	local d1 = DM.GetPlayerData(p1)
@@ -768,6 +770,7 @@ function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids)
 		-- Якщо UUID вказані (гравець сам вибрав), беремо їх
 		if uuids and #uuids > 0 then
 			for _, targetUUID in ipairs(uuids) do
+				if #teamTable >= limit then break end
 				for _, u in ipairs(playerData.Inventory) do
 					if u.UUID == targetUUID then
 						local cfg = ItemDatabase.GetUnitStats(u)
@@ -780,7 +783,7 @@ function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids)
 		-- Фолбек на Equipped
 		if #teamTable == 0 then
 			for _, u in ipairs(playerData.Inventory) do
-				if u.Equipped and #teamTable < 3 then
+				if u.Equipped and #teamTable < limit then
 					local cfg = ItemDatabase.GetUnitStats(u)
 					if cfg then table.insert(teamTable, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
 				end
@@ -789,7 +792,7 @@ function BattleService.StartPvPBattle(p1, p2, p1_uuids, p2_uuids)
 		-- Останній фолбек: просто беремо перших
 		if #teamTable == 0 and #playerData.Inventory > 0 then
 			for _, u in ipairs(playerData.Inventory) do
-				if #teamTable < 3 then
+				if #teamTable < limit then
 					local cfg = ItemDatabase.GetUnitStats(u)
 					if cfg then table.insert(teamTable, { UUID=u.UUID, ItemId=u.ItemId, Name=cfg.Name, Class=cfg.Class, ClassAbility=cfg.ClassConfig and cfg.ClassConfig.Ability or "None", ClassAbilityIcon=cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or "", HP=cfg.MaxHP, MaxHP=cfg.MaxHP, Damage=cfg.Damage }) end
 				end
@@ -893,17 +896,33 @@ task.spawn(function()
 			end
 		end
 
-		-- 1. If 2 or more players in queue, match first 2 (FIFO)
-		while #matchmakingQueue >= 2 do
-			local p1Entry = table.remove(matchmakingQueue, 1)
-			local p2Entry = table.remove(matchmakingQueue, 1)
+		-- 1. Match players with the SAME TeamSize (FIFO)
+		local modes = { 1, 3 }
+		for _, targetSize in ipairs(modes) do
+			local p1Idx, p2Idx = nil, nil
+			for i, entry in ipairs(matchmakingQueue) do
+				if (entry.TeamSize or 3) == targetSize then
+					if not p1Idx then
+						p1Idx = i
+					elseif not p2Idx then
+						p2Idx = i
+						break
+					end
+				end
+			end
 
-			if p1Entry and p2Entry and p1Entry.Player and p2Entry.Player then
-				fireClient(p1Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
-				fireClient(p2Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+			if p1Idx and p2Idx then
+				-- Remove from highest index to lowest so positions don't shift
+				local p2Entry = table.remove(matchmakingQueue, p2Idx)
+				local p1Entry = table.remove(matchmakingQueue, p1Idx)
 
-				print(string.format("[Matchmaking] ⚔️ MATCH FOUND: %s vs %s!", p1Entry.Player.Name, p2Entry.Player.Name))
-				BattleService.StartPvPBattle(p1Entry.Player, p2Entry.Player, p1Entry.TeamUUIDs, p2Entry.TeamUUIDs)
+				if p1Entry and p2Entry and p1Entry.Player and p2Entry.Player then
+					fireClient(p1Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+					fireClient(p2Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+
+					print(string.format("[Matchmaking] ⚔️ MATCH FOUND (%dv%d): %s vs %s!", targetSize, targetSize, p1Entry.Player.Name, p2Entry.Player.Name))
+					BattleService.StartPvPBattle(p1Entry.Player, p2Entry.Player, p1Entry.TeamUUIDs, p2Entry.TeamUUIDs, targetSize)
+				end
 			end
 		end
 
@@ -914,7 +933,7 @@ task.spawn(function()
 				table.remove(matchmakingQueue, i)
 				
 				local disguiseName = DISGUISED_NAMES[math.random(1, #DISGUISED_NAMES)]
-				print(string.format("[Matchmaking] ⏱️ 30s timeout for %s -> Starting seamless match with %s", entry.Player.Name, disguiseName))
+				print(string.format("[Matchmaking] ⏱️ 30s timeout for %s (%dv%d) -> Starting seamless match with %s", entry.Player.Name, entry.TeamSize or 3, entry.TeamSize or 3, disguiseName))
 
 				fireClient(entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
 				BattleService.StartBotBattle(entry.Player, entry.TeamUUIDs, entry.TeamSize)
