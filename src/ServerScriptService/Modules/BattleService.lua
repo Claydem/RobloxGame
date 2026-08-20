@@ -663,22 +663,22 @@ local function buildBotTeam(player, teamSize)
 				table.insert(team, {
 					UUID   = HttpService:GenerateGUID(false),
 					ItemId = id,
-					Name   = stats.Name .. " (" .. botClass .. ")",
+					Name   = stats.Name,
 					Class  = botClass,
 					ClassAbility = stats.ClassConfig and stats.ClassConfig.Ability or "None",
 					ClassAbilityIcon = stats.ClassConfig and stats.ClassConfig.AbilityIcon or "",
 					Level  = botLevel,
-					HP     = math.floor(stats.MaxHP * 0.9),
-					MaxHP  = math.floor(stats.MaxHP * 0.9),
-					Damage = math.floor(stats.Damage * 0.9),
+					HP     = math.floor(stats.MaxHP * 0.95),
+					MaxHP  = math.floor(stats.MaxHP * 0.95),
+					Damage = math.floor(stats.Damage * 0.95),
 				})
 			end
 		end
 	end
 	if #team == 0 then
 		table.insert(team, {
-			UUID = "bot", ItemId = "brainrot_67",
-			Name = "Bot Brainrot", Class = "Normal", Level = 1, HP = 120, MaxHP = 120, Damage = 12,
+			UUID = "bot_unit_1", ItemId = "brainrot_67",
+			Name = "Skibidi Toilet", Class = "Normal", Level = 1, HP = 120, MaxHP = 120, Damage = 12,
 			ClassAbility = "None", ClassAbilityIcon = "",
 		})
 	end
@@ -832,14 +832,121 @@ end
 _G.BattleService = BattleService
 
 -- ═══════════════════════════════════════════════════════
+--  MATCHMAKING QUEUE SYSTEM
+-- ═══════════════════════════════════════════════════════
+
+local matchmakingQueue = {} -- array of { Player = player, JoinTime = os.clock(), TeamUUIDs = uuids, TeamSize = size }
+
+local DISGUISED_NAMES = {
+	"ShadowNinja_99", "DragonSlayer", "VortexGamer", "ProGamer_2026",
+	"NeonStrike", "CyberKnight", "PhantomHunter", "SuperNova_7",
+	"EpicBattler", "StormRider", "AeroMaster", "BlazeWarrior",
+	"FrostBite_X", "TitanGamer", "AlphaWolf_12", "HyperSonic_88",
+	"ApexLegend_01", "NightCrawler", "QuantumZero", "SwiftBlade",
+	"GamerGuy_42", "PixelKing", "MysticWarrior", "ThunderBolt"
+}
+
+function BattleService.JoinQueue(player, teamUUIDs, teamSize)
+	if playerBattles[player] then
+		fireClient(player, "MatchmakingStatus", { InQueue = false, Error = "Already in battle" })
+		return
+	end
+
+	-- Remove if already in queue
+	BattleService.LeaveQueue(player, false)
+
+	table.insert(matchmakingQueue, {
+		Player = player,
+		JoinTime = os.clock(),
+		TeamUUIDs = teamUUIDs,
+		TeamSize = teamSize or 3,
+	})
+
+	fireClient(player, "MatchmakingStatus", { InQueue = true, Elapsed = 0 })
+	print(string.format("[Matchmaking] ⏳ %s joined queue (Total in queue: %d)", player.Name, #matchmakingQueue))
+end
+
+function BattleService.LeaveQueue(player, notifyClient)
+	for i = #matchmakingQueue, 1, -1 do
+		if matchmakingQueue[i].Player == player then
+			table.remove(matchmakingQueue, i)
+			if notifyClient ~= false then
+				fireClient(player, "MatchmakingStatus", { InQueue = false })
+			end
+			print(string.format("[Matchmaking] ❌ %s left queue", player.Name))
+			break
+		end
+	end
+end
+
+-- Matchmaking worker loop (runs every 0.5s)
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		local now = os.clock()
+
+		-- Clean up invalid queue entries (e.g. disconnected or already in battle)
+		for i = #matchmakingQueue, 1, -1 do
+			local entry = matchmakingQueue[i]
+			if not entry.Player or not entry.Player.Parent or playerBattles[entry.Player] then
+				table.remove(matchmakingQueue, i)
+			end
+		end
+
+		-- 1. If 2 or more players in queue, match first 2 (FIFO)
+		while #matchmakingQueue >= 2 do
+			local p1Entry = table.remove(matchmakingQueue, 1)
+			local p2Entry = table.remove(matchmakingQueue, 1)
+
+			if p1Entry and p2Entry and p1Entry.Player and p2Entry.Player then
+				fireClient(p1Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+				fireClient(p2Entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+
+				print(string.format("[Matchmaking] ⚔️ MATCH FOUND: %s vs %s!", p1Entry.Player.Name, p2Entry.Player.Name))
+				BattleService.StartPvPBattle(p1Entry.Player, p2Entry.Player, p1Entry.TeamUUIDs, p2Entry.TeamUUIDs)
+			end
+		end
+
+		-- 2. Check for players in queue for >= 30 seconds -> fallback to realistic bot match
+		for i = #matchmakingQueue, 1, -1 do
+			local entry = matchmakingQueue[i]
+			if entry and (now - entry.JoinTime >= 30) then
+				table.remove(matchmakingQueue, i)
+				
+				local disguiseName = DISGUISED_NAMES[math.random(1, #DISGUISED_NAMES)]
+				print(string.format("[Matchmaking] ⏱️ 30s timeout for %s -> Starting seamless match with %s", entry.Player.Name, disguiseName))
+
+				fireClient(entry.Player, "MatchmakingStatus", { InQueue = false, Matched = true })
+				BattleService.StartBotBattle(entry.Player, entry.TeamUUIDs, entry.TeamSize)
+			end
+		end
+	end
+end)
+
+-- ═══════════════════════════════════════════════════════
 --  EVENT HANDLERS
 -- ═══════════════════════════════════════════════════════
 
 local events = ReplicatedStorage:WaitForChild("Events")
 
--- Start battle
+-- Start battle (Legacy or Practice)
 events:WaitForChild("StartBattle").OnServerInvoke = function(player, teamUUIDs, teamSize)
 	return BattleService.StartBotBattle(player, teamUUIDs, teamSize)
+end
+
+-- Matchmaking queue events
+local joinQueueEvent = events:WaitForChild("JoinMatchmakingQueue", 5) or events:FindFirstChild("JoinMatchmakingQueue")
+if joinQueueEvent then
+	joinQueueEvent.OnServerEvent:Connect(function(player, teamUUIDs, teamSize)
+		BattleService.JoinQueue(player, teamUUIDs, teamSize)
+	end)
+end
+
+local leaveQueueEvent = events:WaitForChild("LeaveMatchmakingQueue", 5) or events:FindFirstChild("LeaveMatchmakingQueue")
+if leaveQueueEvent then
+	leaveQueueEvent.OnServerEvent:Connect(function(player)
+		BattleService.LeaveQueue(player, true)
+	end)
 end
 
 -- QTE results from client (attack & defense data combined)
@@ -868,6 +975,7 @@ events:WaitForChild("SubmitBattleTurn").OnServerEvent:Connect(function() end)
 
 -- Cleanup
 Players.PlayerRemoving:Connect(function(player)
+	BattleService.LeaveQueue(player, false)
 	local bid = playerBattles[player]
 	if bid then
 		local s = activeBattles[bid]

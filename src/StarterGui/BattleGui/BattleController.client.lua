@@ -532,26 +532,142 @@ local function renderTeamSelect()
 	refreshTeamSlots()
 end
 
+-- ═══════════════════════════════════════════════════════
+--  MATCHMAKING QUEUE OVERLAY
+-- ═══════════════════════════════════════════════════════
+
+local mmOverlay = Instance.new("Frame")
+mmOverlay.Name = "MatchmakingOverlay"
+mmOverlay.Size = UDim2.new(0, 420, 0, 180)
+mmOverlay.Position = UDim2.new(0.5, -210, 0.4, -90)
+mmOverlay.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+mmOverlay.BackgroundTransparency = 0.05
+mmOverlay.Visible = false
+mmOverlay.ZIndex = 500
+mmOverlay.Parent = main
+corner(mmOverlay, 16)
+stroke(mmOverlay, Color3.fromRGB(255, 215, 0), 2)
+
+local mmTitle = Instance.new("TextLabel")
+mmTitle.Size = UDim2.new(1, 0, 0, 36)
+mmTitle.Position = UDim2.new(0, 0, 0, 16)
+mmTitle.BackgroundTransparency = 1
+mmTitle.Text = "🔍 Searching for Opponent..."
+mmTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+mmTitle.TextSize = 18
+mmTitle.Font = Enum.Font.GothamBlack
+mmTitle.ZIndex = 501
+mmTitle.Parent = mmOverlay
+
+local mmTimer = Instance.new("TextLabel")
+mmTimer.Size = UDim2.new(1, 0, 0, 30)
+mmTimer.Position = UDim2.new(0, 0, 0, 56)
+mmTimer.BackgroundTransparency = 1
+mmTimer.Text = "00:00"
+mmTimer.TextColor3 = Color3.fromRGB(200, 205, 220)
+mmTimer.TextSize = 22
+mmTimer.Font = Enum.Font.GothamBold
+mmTimer.ZIndex = 501
+mmTimer.Parent = mmOverlay
+
+local mmHint = Instance.new("TextLabel")
+mmHint.Size = UDim2.new(1, 0, 0, 20)
+mmHint.Position = UDim2.new(0, 0, 0, 88)
+mmHint.BackgroundTransparency = 1
+mmHint.Text = "Looking for active players in queue..."
+mmHint.TextColor3 = Color3.fromRGB(140, 145, 165)
+mmHint.TextSize = 11
+mmHint.Font = Enum.Font.GothamMedium
+mmHint.ZIndex = 501
+mmHint.Parent = mmOverlay
+
+local mmCancelBtn = Instance.new("TextButton")
+mmCancelBtn.Size = UDim2.new(0, 180, 0, 38)
+mmCancelBtn.Position = UDim2.new(0.5, -90, 1, -50)
+mmCancelBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+mmCancelBtn.Text = "✕ Cancel Search"
+mmCancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+mmCancelBtn.TextSize = 13
+mmCancelBtn.Font = Enum.Font.GothamBold
+mmCancelBtn.ZIndex = 502
+mmCancelBtn.Parent = mmOverlay
+corner(mmCancelBtn, 8)
+
+local isQueueing = false
+local queueStartTime = 0
+
+local function stopQueueUI()
+	isQueueing = false
+	mmOverlay.Visible = false
+end
+
+local function startQueueUI()
+	isQueueing = true
+	queueStartTime = os.clock()
+	mmOverlay.Visible = true
+	teamPanel.Visible = false
+	
+	task.spawn(function()
+		while isQueueing do
+			local elapsed = math.floor(os.clock() - queueStartTime)
+			local mins = math.floor(elapsed / 60)
+			local secs = elapsed % 60
+			mmTimer.Text = string.format("%02d:%02d", mins, secs)
+			task.wait(1)
+		end
+	end)
+end
+
+mmCancelBtn.MouseButton1Click:Connect(function()
+	stopQueueUI()
+	teamPanel.Visible = true
+	startBattleBtn.Text = "⚔️ START BATTLE"
+	startBattleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	local leaveEvent = Events and Events:FindFirstChild("LeaveMatchmakingQueue")
+	if leaveEvent then
+		leaveEvent:FireServer()
+	end
+end)
+
+local mmStatusEvent = Events and (Events:WaitForChild("MatchmakingStatus", 5) or Events:FindFirstChild("MatchmakingStatus"))
+if mmStatusEvent then
+	mmStatusEvent.OnClientEvent:Connect(function(status)
+		if status.InQueue then
+			startQueueUI()
+		else
+			stopQueueUI()
+			if status.Matched then
+				startBattleBGM()
+			end
+		end
+	end)
+end
+
 startBattleBtn.MouseButton1Click:Connect(function()
 	if #selectedTeamUUIDs == 0 then return end
-	startBattleBtn.Text = "⏳ Loading..."
-	startBattleBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
-
-	startBattleBGM()
-
-	local StartBattle = Events and Events:FindFirstChild("StartBattle")
-	if StartBattle then
-		local ok, res = pcall(function()
-			return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
-		end)
-		if ok and res and res.Success then
-			teamPanel.Visible = false
-		else
-			startBattleBtn.Text = "❌ " .. (res and res.Error or "Error!")
-			task.delay(2, function()
-				startBattleBtn.Text = "⚔️ START BATTLE"
-				startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
+	
+	local joinQueue = Events and Events:FindFirstChild("JoinMatchmakingQueue")
+	if joinQueue then
+		joinQueue:FireServer(selectedTeamUUIDs, selectedTeamSize)
+		startQueueUI()
+	else
+		startBattleBtn.Text = "⏳ Loading..."
+		startBattleBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+		startBattleBGM()
+		local StartBattle = Events and Events:FindFirstChild("StartBattle")
+		if StartBattle then
+			local ok, res = pcall(function()
+				return StartBattle:InvokeServer(selectedTeamUUIDs, selectedTeamSize)
 			end)
+			if ok and res and res.Success then
+				teamPanel.Visible = false
+			else
+				startBattleBtn.Text = "❌ " .. (res and res.Error or "Error!")
+				task.delay(2, function()
+					startBattleBtn.Text = "⚔️ START BATTLE"
+					startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
+				end)
+			end
 		end
 	end
 end)

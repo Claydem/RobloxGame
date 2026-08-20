@@ -323,15 +323,26 @@ lobbySubFrame.BackgroundTransparency = 1
 lobbySubFrame.Parent = battleFrame
 
 local btnStartBotBattle = Instance.new("TextButton")
-btnStartBotBattle.Size = UDim2.new(0, 240, 0, 48)
-btnStartBotBattle.Position = UDim2.new(0.5, -120, 0.35, 0)
-btnStartBotBattle.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-btnStartBotBattle.Text = "⚔️ BATTLE VS BOT"
+btnStartBotBattle.Size = UDim2.new(0, 260, 0, 52)
+btnStartBotBattle.Position = UDim2.new(0.5, -130, 0.35, 0)
+btnStartBotBattle.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+btnStartBotBattle.Text = "⚔️ BATTLE"
 btnStartBotBattle.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnStartBotBattle.TextSize = 15
-btnStartBotBattle.Font = Enum.Font.GothamBold
+btnStartBotBattle.TextSize = 18
+btnStartBotBattle.Font = Enum.Font.GothamBlack
 btnStartBotBattle.Parent = lobbySubFrame
-createCorner(btnStartBotBattle, 10)
+createCorner(btnStartBotBattle, 12)
+createStroke(btnStartBotBattle, Color3.fromRGB(255, 215, 0), 2)
+
+local battleHint = Instance.new("TextLabel")
+battleHint.Size = UDim2.new(0, 300, 0, 24)
+battleHint.Position = UDim2.new(0.5, -150, 0.35, 60)
+battleHint.BackgroundTransparency = 1
+battleHint.Text = "⚡ Instant PvP Matchmaking with players"
+battleHint.TextColor3 = Color3.fromRGB(180, 185, 205)
+battleHint.TextSize = 11
+battleHint.Font = Enum.Font.GothamMedium
+battleHint.Parent = lobbySubFrame
 
 local arenaSubFrame = Instance.new("Frame")
 arenaSubFrame.Size = UDim2.new(1, 0, 1, 0)
