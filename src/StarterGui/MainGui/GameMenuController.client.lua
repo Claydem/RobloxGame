@@ -16,17 +16,9 @@ local StarterGui = game:GetService("StarterGui")
 
 print("[GameMenuController] Script started! v3")
 
--- Disable default Roblox leaderboard
+-- Enable default Roblox leaderboard (User requested original design)
 pcall(function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
-end)
-task.spawn(function()
-	for i = 1, 20 do
-		task.wait(0.5)
-		pcall(function()
-			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
-		end)
-	end
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
 end)
 
 local LocalPlayer = Players.LocalPlayer
@@ -52,6 +44,13 @@ local currentConsumables = {}
 local selectedPetForFeedUUID = nil
 local selectedAttackZone = nil
 local selectedDefenseZone = nil
+
+-- FORCE KILL OLD GHOST SCRIPTS THAT CREATE BANNERS
+for _, child in ipairs(PlayerGui:GetDescendants()) do
+	if child:IsA("LocalScript") and (child.Name == "MainUIController" or child.Name == "ClientMainController") then
+		pcall(function() child.Disabled = true; child:Destroy() end)
+	end
+end
 
 local screenGui = script:FindFirstAncestorOfClass("ScreenGui")
 if not screenGui then
@@ -100,147 +99,11 @@ local function createStroke(parent, color, thickness)
 	return stroke
 end
 
--- === CUSTOM LEADERBOARD (TOP LEFT — mimics default Roblox style) ===
-local leaderboardFrame = Instance.new("Frame")
-leaderboardFrame.Name = "CustomLeaderboard"
-leaderboardFrame.Size = UDim2.new(0, 200, 0, 200)
-leaderboardFrame.Position = UDim2.new(0, 10, 0, 10)
-leaderboardFrame.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
-leaderboardFrame.BackgroundTransparency = 0.3
-leaderboardFrame.ZIndex = 100
-leaderboardFrame.Parent = screenGui
-createCorner(leaderboardFrame, 8)
-
--- Close/toggle button for leaderboard (X in top-right corner)
-local lbCloseBtn = Instance.new("TextButton")
-lbCloseBtn.Size = UDim2.new(0, 22, 0, 22)
-lbCloseBtn.Position = UDim2.new(1, -26, 0, 4)
-lbCloseBtn.BackgroundTransparency = 1
-lbCloseBtn.Text = "X"
-lbCloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-lbCloseBtn.TextSize = 14
-lbCloseBtn.Font = Enum.Font.GothamBold
-lbCloseBtn.ZIndex = 105
-lbCloseBtn.Parent = leaderboardFrame
-lbCloseBtn.MouseButton1Click:Connect(function()
-	leaderboardFrame.Visible = not leaderboardFrame.Visible
-end)
-
--- Leaderboard header
-local lbHeader = Instance.new("Frame")
-lbHeader.Size = UDim2.new(1, 0, 0, 28)
-lbHeader.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-lbHeader.BackgroundTransparency = 0.2
-lbHeader.ZIndex = 101
-lbHeader.Parent = leaderboardFrame
-createCorner(lbHeader, 8)
-
-local lbTitlePeople = Instance.new("TextLabel")
-lbTitlePeople.Size = UDim2.new(0.5, -14, 1, 0)
-lbTitlePeople.Position = UDim2.new(0, 8, 0, 0)
-lbTitlePeople.BackgroundTransparency = 1
-lbTitlePeople.Text = "People"
-lbTitlePeople.TextColor3 = Color3.fromRGB(255, 255, 255)
-lbTitlePeople.TextSize = 12
-lbTitlePeople.Font = Enum.Font.GothamBold
-lbTitlePeople.TextXAlignment = Enum.TextXAlignment.Left
-lbTitlePeople.ZIndex = 102
-lbTitlePeople.Parent = lbHeader
-
-local lbTitleCells = Instance.new("TextLabel")
-lbTitleCells.Size = UDim2.new(0.5, -14, 1, 0)
-lbTitleCells.Position = UDim2.new(0.5, 0, 0, 0)
-lbTitleCells.BackgroundTransparency = 1
-lbTitleCells.Text = "BrainCells"
-lbTitleCells.TextColor3 = Color3.fromRGB(255, 255, 255)
-lbTitleCells.TextSize = 12
-lbTitleCells.Font = Enum.Font.GothamBold
-lbTitleCells.TextXAlignment = Enum.TextXAlignment.Right
-lbTitleCells.ZIndex = 102
-lbTitleCells.Parent = lbHeader
-
--- Leaderboard player list container
-local lbScroll = Instance.new("ScrollingFrame")
-lbScroll.Size = UDim2.new(1, -8, 1, -34)
-lbScroll.Position = UDim2.new(0, 4, 0, 30)
-lbScroll.BackgroundTransparency = 1
-lbScroll.ScrollBarThickness = 3
-lbScroll.ZIndex = 101
-lbScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-lbScroll.Parent = leaderboardFrame
-
-local lbListLayout = Instance.new("UIListLayout")
-lbListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-lbListLayout.Padding = UDim.new(0, 2)
-lbListLayout.Parent = lbScroll
-
-local function refreshLeaderboard()
-	-- Clear old entries
-	for _, c in ipairs(lbScroll:GetChildren()) do
-		if c:IsA("GuiObject") then c:Destroy() end
-	end
-	-- Build entries for each player
-	local sortedPlayers = {}
-	for _, p in ipairs(Players:GetPlayers()) do
-		local ls = p:FindFirstChild("leaderstats")
-		local cells = ls and ls:FindFirstChild("BrainCells")
-		local val = cells and cells.Value or 0
-		table.insert(sortedPlayers, {Name = p.Name, Cells = val})
-	end
-	table.sort(sortedPlayers, function(a, b) return a.Cells > b.Cells end)
-
-	for i, info in ipairs(sortedPlayers) do
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 22)
-		row.BackgroundTransparency = (i % 2 == 0) and 0.85 or 1
-		row.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-		row.ZIndex = 102
-		row.LayoutOrder = i
-		row.Parent = lbScroll
-
-		local nameL = Instance.new("TextLabel")
-		nameL.Size = UDim2.new(0.55, 0, 1, 0)
-		nameL.Position = UDim2.new(0, 4, 0, 0)
-		nameL.BackgroundTransparency = 1
-		nameL.Text = info.Name
-		nameL.TextColor3 = Color3.fromRGB(220, 220, 230)
-		nameL.TextSize = 11
-		nameL.Font = Enum.Font.GothamMedium
-		nameL.TextXAlignment = Enum.TextXAlignment.Left
-		nameL.TextTruncate = Enum.TextTruncate.AtEnd
-		nameL.ZIndex = 103
-		nameL.Parent = row
-
-		local cellsL = Instance.new("TextLabel")
-		cellsL.Size = UDim2.new(0.4, 0, 1, 0)
-		cellsL.Position = UDim2.new(0.58, 0, 0, 0)
-		cellsL.BackgroundTransparency = 1
-		cellsL.Text = tostring(info.Cells)
-		cellsL.TextColor3 = Color3.fromRGB(255, 215, 0)
-		cellsL.TextSize = 11
-		cellsL.Font = Enum.Font.GothamBold
-		cellsL.TextXAlignment = Enum.TextXAlignment.Right
-		cellsL.ZIndex = 103
-		cellsL.Parent = row
-	end
-	lbScroll.CanvasSize = UDim2.new(0, 0, 0, #sortedPlayers * 24)
-end
-
-refreshLeaderboard()
--- Auto-refresh leaderboard every 5 seconds
-task.spawn(function()
-	while task.wait(5) do
-		pcall(refreshLeaderboard)
-	end
-end)
-Players.PlayerAdded:Connect(function() task.wait(1) refreshLeaderboard() end)
-Players.PlayerRemoving:Connect(function() task.wait(0.5) refreshLeaderboard() end)
-
--- === 1. TOGGLE BUTTON (TOP RIGHT — where default leaderboard was) ===
+-- === 1. TOGGLE BUTTON (TOP LEFT — custom placement) ===
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Name = "ToggleMenuBtn"
 toggleMenuBtn.Size = UDim2.new(0, 160, 0, 42)
-toggleMenuBtn.Position = UDim2.new(1, -175, 0, 14)
+toggleMenuBtn.Position = UDim2.new(0, 16, 0, 16)
 toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 toggleMenuBtn.Text = "HIDE MENU"
 toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -751,58 +614,97 @@ task.spawn(function()
 		local xpRemaining = math.max(0, maxXP - xp)
 		local progressPct = math.clamp(xp / math.max(1, maxXP), 0, 1)
 
-		-- Close button
-		local closeBtn = Instance.new("TextButton")
-		closeBtn.Size = UDim2.new(0, 36, 0, 36)
-		closeBtn.Position = UDim2.new(1, -44, 0, 8)
-		closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		closeBtn.Text = "✕"
-		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		closeBtn.TextSize = 16
-		closeBtn.Font = Enum.Font.GothamBold
-		closeBtn.ZIndex = 15
-		closeBtn.Parent = inspectionPanel
-		createCorner(closeBtn, 8)
-		closeBtn.MouseButton1Click:Connect(closeInspectionPanel)
-
 		-- Name + Rarity + Class header
 		local headerFrame = Instance.new("Frame")
-		headerFrame.Size = UDim2.new(1, -16, 0, 52)
+		headerFrame.Size = UDim2.new(1, -16, 0, 48)
 		headerFrame.Position = UDim2.new(0, 8, 0, 8)
 		headerFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
-		headerFrame.ZIndex = 12
+		headerFrame.ZIndex = 11
 		headerFrame.Parent = inspectionPanel
 		createCorner(headerFrame, 10)
 		createStroke(headerFrame, rarityColor, 2)
 
 		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -50, 0, 26)
-		nameLabel.Position = UDim2.new(0, 12, 0, 4)
+		nameLabel.Size = UDim2.new(1, -50, 0, 24)
+		nameLabel.Position = UDim2.new(0, 12, 0, 2)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = rarityIcon .. " " .. (stats.Name or unit.ItemId)
 		nameLabel.TextColor3 = rarityColor
 		nameLabel.TextSize = 16
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-		nameLabel.ZIndex = 11
+		nameLabel.ZIndex = 12
 		nameLabel.Parent = headerFrame
 
 		local classLabel = Instance.new("TextLabel")
 		classLabel.Size = UDim2.new(1, -12, 0, 20)
-		classLabel.Position = UDim2.new(0, 12, 0, 28)
+		classLabel.Position = UDim2.new(0, 12, 0, 24)
 		classLabel.BackgroundTransparency = 1
 		classLabel.Text = string.format("%s [%s]  %s", classIcon, (stats.Class or "Normal"):upper(), stats.RarityConfig and stats.RarityConfig.Name or "Common")
 		classLabel.TextColor3 = classColor
 		classLabel.TextSize = 11
 		classLabel.Font = Enum.Font.GothamMedium
 		classLabel.TextXAlignment = Enum.TextXAlignment.Left
-		classLabel.ZIndex = 11
+		classLabel.ZIndex = 12
 		classLabel.Parent = headerFrame
+		
+		-- Massive Close button (Fixes "cannot go back" bug)
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Size = UDim2.new(0, 44, 0, 44)
+		closeBtn.Position = UDim2.new(1, -52, 0, 10)
+		closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+		closeBtn.Text = "X"
+		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeBtn.TextSize = 20
+		closeBtn.Font = Enum.Font.GothamBold
+		closeBtn.ZIndex = 100 -- Extremely high ZIndex to prevent overlap issues
+		closeBtn.Parent = inspectionPanel
+		createCorner(closeBtn, 8)
+		closeBtn.MouseButton1Click:Connect(closeInspectionPanel)
+
+		-- 3D Viewport for Pet Model
+		local viewportFrame = Instance.new("ViewportFrame")
+		viewportFrame.Size = UDim2.new(1, -16, 0, 130)
+		viewportFrame.Position = UDim2.new(0, 8, 0, 64)
+		viewportFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+		viewportFrame.ZIndex = 11
+		viewportFrame.Parent = inspectionPanel
+		createCorner(viewportFrame, 10)
+		createStroke(viewportFrame, Color3.fromRGB(40, 45, 60), 1)
+
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 50
+		viewportFrame.CurrentCamera = camera
+		viewportFrame.LightColor = Color3.fromRGB(255, 255, 255)
+		viewportFrame.Ambient = Color3.fromRGB(150, 150, 150)
+
+		-- Load model into viewport
+		if ModelLoader and ModelLoader.LoadModel then
+			local petModel = ModelLoader.LoadModel(unit.ItemId, stats.Class or "Normal")
+			if petModel then
+				petModel.Parent = viewportFrame
+				if petModel.PrimaryPart then
+					local cf = petModel.PrimaryPart.CFrame
+					local targetPos = cf.Position + (cf.LookVector * 4) + Vector3.new(0, 1.5, 0)
+					camera.CFrame = CFrame.new(targetPos, cf.Position)
+					
+					-- Simple idle rotation animation
+					task.spawn(function()
+						local t = 0
+						while viewportFrame.Parent and petModel.Parent do
+							t = t + wait()
+							local rot = CFrame.Angles(0, t * 1.5, 0)
+							petModel:SetPrimaryPartCFrame(cf * rot)
+						end
+					end)
+				end
+			end
+		end
 
 		-- Stats grid
 		local statsFrame = Instance.new("Frame")
 		statsFrame.Size = UDim2.new(1, -16, 0, 60)
-		statsFrame.Position = UDim2.new(0, 8, 0, 68)
+		statsFrame.Position = UDim2.new(0, 8, 0, 202)
 		statsFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
 		statsFrame.ZIndex = 11
 		statsFrame.Parent = inspectionPanel
@@ -821,7 +723,7 @@ task.spawn(function()
 			statBlock.Size = UDim2.new(0.5, -8, 0, 26)
 			statBlock.Position = UDim2.new(col * 0.5, col == 0 and 6 or 2, 0, 6 + row * 28)
 			statBlock.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
-			statBlock.ZIndex = 11
+			statBlock.ZIndex = 12
 			statBlock.Parent = statsFrame
 			createCorner(statBlock, 6)
 
@@ -832,14 +734,14 @@ task.spawn(function()
 			statText.TextColor3 = Color3.fromRGB(220, 225, 240)
 			statText.TextSize = 11
 			statText.Font = Enum.Font.GothamBold
-			statText.ZIndex = 11
+			statText.ZIndex = 13
 			statText.Parent = statBlock
 		end
 
 		-- Class ability description
 		local perkFrame = Instance.new("Frame")
 		perkFrame.Size = UDim2.new(1, -16, 0, 40)
-		perkFrame.Position = UDim2.new(0, 8, 0, 136)
+		perkFrame.Position = UDim2.new(0, 8, 0, 270)
 		perkFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
 		perkFrame.ZIndex = 11
 		perkFrame.Parent = inspectionPanel
@@ -856,13 +758,13 @@ task.spawn(function()
 		perkText.Font = Enum.Font.GothamMedium
 		perkText.TextWrapped = true
 		perkText.TextXAlignment = Enum.TextXAlignment.Left
-		perkText.ZIndex = 11
+		perkText.ZIndex = 12
 		perkText.Parent = perkFrame
 
 		-- XP bar
 		local xpTrack = Instance.new("Frame")
 		xpTrack.Size = UDim2.new(1, -16, 0, 22)
-		xpTrack.Position = UDim2.new(0, 8, 0, 184)
+		xpTrack.Position = UDim2.new(0, 8, 0, 318)
 		xpTrack.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
 		xpTrack.ZIndex = 11
 		xpTrack.Parent = inspectionPanel
@@ -872,7 +774,7 @@ task.spawn(function()
 		local xpFill = Instance.new("Frame")
 		xpFill.Size = UDim2.new(progressPct, 0, 1, 0)
 		xpFill.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
-		xpFill.ZIndex = 11
+		xpFill.ZIndex = 12
 		xpFill.Parent = xpTrack
 		createCorner(xpFill, 8)
 
@@ -883,7 +785,7 @@ task.spawn(function()
 		xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		xpLabel.TextSize = 9
 		xpLabel.Font = Enum.Font.GothamBold
-		xpLabel.ZIndex = 11
+		xpLabel.ZIndex = 13
 		xpLabel.Parent = xpTrack
 
 		-- Roster button
@@ -894,13 +796,13 @@ task.spawn(function()
 
 		local rosterBtn = Instance.new("TextButton")
 		rosterBtn.Size = UDim2.new(1, -16, 0, 38)
-		rosterBtn.Position = UDim2.new(0, 8, 0, 214)
+		rosterBtn.Position = UDim2.new(0, 8, 0, 348)
 		rosterBtn.BackgroundColor3 = btnColor
 		rosterBtn.Text = btnText
 		rosterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		rosterBtn.TextSize = 13
 		rosterBtn.Font = Enum.Font.GothamBold
-		rosterBtn.ZIndex = 11
+		rosterBtn.ZIndex = 15
 		rosterBtn.Active = unit.Equipped or canAdd
 		rosterBtn.Parent = inspectionPanel
 		createCorner(rosterBtn, 10)
@@ -908,7 +810,7 @@ task.spawn(function()
 		-- Active counter label
 		local counterLbl = Instance.new("TextLabel")
 		counterLbl.Size = UDim2.new(1, -16, 0, 20)
-		counterLbl.Position = UDim2.new(0, 8, 0, 255)
+		counterLbl.Position = UDim2.new(0, 8, 0, 390)
 		counterLbl.BackgroundTransparency = 1
 		counterLbl.Text = string.format("🏡 Active: %d / %d", activeCount, maxCount)
 		counterLbl.TextColor3 = activeCount >= maxCount and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(46, 204, 113)
