@@ -824,8 +824,21 @@ task.spawn(function()
 		local itemDB = ItemDatabase or (ModulesFolder and ModulesFolder:FindFirstChild("ItemDatabase") and require(ModulesFolder.ItemDatabase))
 		if not itemDB then return end
 
+		-- Sort inventory alphabetically by Name (A-Z)
+		local sortedInventory = {}
+		for _, u in ipairs(currentInventory) do
+			table.insert(sortedInventory, u)
+		end
+		table.sort(sortedInventory, function(a, b)
+			local statsA = itemDB.GetUnitStats and itemDB.GetUnitStats(a) or itemDB.GetItem(a.ItemId)
+			local statsB = itemDB.GetUnitStats and itemDB.GetUnitStats(b) or itemDB.GetItem(b.ItemId)
+			local nameA = (statsA and statsA.Name) or a.ItemId or ""
+			local nameB = (statsB and statsB.Name) or b.ItemId or ""
+			return string.lower(nameA) < string.lower(nameB)
+		end)
+
 		-- Compact clickable cards
-		for _, unit in ipairs(currentInventory) do
+		for _, unit in ipairs(sortedInventory) do
 			local stats = itemDB.GetUnitStats and itemDB.GetUnitStats(unit) or itemDB.GetItem(unit.ItemId)
 			if not stats then continue end
 

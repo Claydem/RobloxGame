@@ -411,7 +411,19 @@ local function showPetSelection(opponentName)
 	local ModFolder = ReplicatedStorage:WaitForChild("Modules", 10)
 	local ItemDB = ModFolder and require(ModFolder:WaitForChild("ItemDatabase"))
 	
-	for i, u in ipairs(cachedInventory) do
+	local sortedInventory = {}
+	for _, u in ipairs(cachedInventory) do
+		table.insert(sortedInventory, u)
+	end
+	table.sort(sortedInventory, function(a, b)
+		local statsA = ItemDB and ItemDB.GetUnitStats(a)
+		local statsB = ItemDB and ItemDB.GetUnitStats(b)
+		local nameA = (statsA and statsA.Name) or a.ItemId or ""
+		local nameB = (statsB and statsB.Name) or b.ItemId or ""
+		return string.lower(nameA) < string.lower(nameB)
+	end)
+
+	for i, u in ipairs(sortedInventory) do
 		local cfg = ItemDB and ItemDB.GetUnitStats(u)
 		if cfg then
 			local btn = Instance.new("TextButton")

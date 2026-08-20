@@ -425,6 +425,15 @@ local function renderTeamSelect()
 	end
 	selectedTeamUUIDs = newSelected
 
+	-- Sort equipped units alphabetically
+	table.sort(equippedUnits, function(a, b)
+		local cfgA = ItemDB and ItemDB.GetItem(a.ItemId)
+		local cfgB = ItemDB and ItemDB.GetItem(b.ItemId)
+		local nameA = (cfgA and cfgA.Name) or a.ItemId or ""
+		local nameB = (cfgB and cfgB.Name) or b.ItemId or ""
+		return string.lower(nameA) < string.lower(nameB)
+	end)
+
 	if #equippedUnits == 0 then
 		local emptyLbl = Instance.new("TextLabel")
 		emptyLbl.Size = UDim2.new(1, 0, 0, 60)
