@@ -325,11 +325,15 @@ btn3v3.Parent=modeFrame; corner(btn3v3,8)
 local stroke3v3 = stroke(btn3v3, Color3.fromRGB(255,215,0), 1.5)
 
 local selectedTeamUUIDs = {}
+local cardButtons = {} -- [uuid] = { btn = btn, stroke = stroke, badge = badge, classColor = classColor }
+
+local renderTeamSelect -- forward declare
+local updateCardVisuals
+local refreshTeamSlots
 
 local function setMode(size)
 	selectedTeamSize = size
-	-- Скидаємо вибір повністю при зміні 1v1 / 3v3
-	selectedTeamUUIDs = {}
+	selectedTeamUUIDs = {} -- Скидаємо вибір повністю при зміні 1v1 / 3v3
 
 	if size == 1 then
 		btn1v1.BackgroundColor3 = Color3.fromRGB(55,65,85)
@@ -346,11 +350,14 @@ local function setMode(size)
 		stroke1v1.Color = Color3.fromRGB(60,70,90)
 		btn1v1.TextColor3 = Color3.fromRGB(200,200,220)
 	end
-end
-setMode(3) -- default 3v3
 
-btn1v1.MouseButton1Click:Connect(function() setMode(1); renderTeamSelect() end)
-btn3v3.MouseButton1Click:Connect(function() setMode(3); renderTeamSelect() end)
+	if renderTeamSelect then
+		renderTeamSelect()
+	end
+end
+
+btn1v1.MouseButton1Click:Connect(function() setMode(1) end)
+btn3v3.MouseButton1Click:Connect(function() setMode(3) end)
 
 local teamScroll = Instance.new("ScrollingFrame")
 teamScroll.Size=UDim2.new(1,-20,1,-130); teamScroll.Position=UDim2.new(0,10,0,64)
@@ -386,7 +393,7 @@ startBotBtn.BackgroundColor3=Color3.fromRGB(231,76,60); startBotBtn.TextColor3=C
 startBotBtn.Text="🤖 VS BOT"; startBotBtn.TextSize=13; startBotBtn.Font=Enum.Font.GothamBlack
 startBotBtn.Parent=teamPanel; corner(startBotBtn,10)
 
-local function refreshTeamSlots()
+refreshTeamSlots = function()
 	for i = 1, 3 do
 		local sl = teamSlotLabels[i]
 		if not sl then continue end
@@ -420,6 +427,29 @@ local function refreshTeamSlots()
 		end
 	end
 	startBattleBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 100)
+	startBotBtn.BackgroundColor3 = #selectedTeamUUIDs > 0 and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(100, 100, 100)
+end
+
+updateCardVisuals = function()
+	for uuid, data in pairs(cardButtons) do
+		local slotIndex = table.find(selectedTeamUUIDs, uuid)
+		if slotIndex then
+			data.btn.BackgroundColor3 = Color3.fromRGB(36, 75, 48)
+			data.stroke.Color = Color3.fromRGB(46, 204, 113)
+			data.stroke.Thickness = 3
+			if data.badge then
+				data.badge.Visible = true
+				data.badge.Text = (selectedTeamSize == 1) and "✅" or ("#" .. tostring(slotIndex))
+			end
+		else
+			data.btn.BackgroundColor3 = data.classColor or Color3.fromRGB(28, 32, 44)
+			data.stroke.Color = Color3.fromRGB(55, 62, 80)
+			data.stroke.Thickness = 1
+			if data.badge then
+				data.badge.Visible = false
+			end
+		end
+	end
 end
 
 local function fetchLatestInventory()
@@ -432,7 +462,7 @@ local function fetchLatestInventory()
 	end
 end
 
-local function renderTeamSelect()
+renderTeamSelect = function()
 	fetchLatestInventory()
 
 	for _, c in ipairs(teamScroll:GetChildren()) do
@@ -440,6 +470,8 @@ local function renderTeamSelect()
 			c:Destroy()
 		end
 	end
+	cardButtons = {}
+
 	local equippedUnits = {}
 	local validUUIDs = {}
 	for _, unit in ipairs(cachedInventory) do
@@ -484,52 +516,67 @@ local function renderTeamSelect()
 		local cfg = ItemDB and ItemDB.GetItem(unit.ItemId)
 		local name = cfg and cfg.Name or unit.ItemId
 
-		-- Check if already selected
-		local isAutoSelected = false
-		for _, uuid in ipairs(selectedTeamUUIDs) do
-			if uuid == unit.UUID then
-				isAutoSelected = true
-				break
-			end
-		end
-
 		local btn = Instance.new("TextButton")
 		local classIcon = cfg and cfg.ClassConfig and cfg.ClassConfig.AbilityIcon or ""
 		local rarityIcon = cfg and cfg.RarityConfig and cfg.RarityConfig.Icon or "⚪"
 		local classColor = cfg and cfg.ClassConfig and cfg.ClassConfig.Color
-		btn.BackgroundColor3 = classColor or (isAutoSelected and Color3.fromRGB(40,80,50) or Color3.fromRGB(30,34,48))
+		btn.BackgroundColor3 = classColor or Color3.fromRGB(28, 32, 44)
 		btn.TextColor3 = Color3.fromRGB(220,220,230)
 		btn.TextSize = 11; btn.Font = Enum.Font.GothamBold
 		btn.Text = rarityIcon .. " " .. name .. " " .. classIcon .. "\n❤️" .. (cfg and cfg.MaxHP or "?") .. " ⚔️" .. (cfg and cfg.Damage or "?")
 		btn.TextWrapped = true; btn.Parent = teamScroll
 		corner(btn, 8)
-		local btnStroke = stroke(btn, isAutoSelected and Color3.fromRGB(46,204,113) or Color3.fromRGB(60,70,90), isAutoSelected and 3 or 1)
+		local btnStroke = stroke(btn, Color3.fromRGB(55, 62, 80), 1)
+
+		local badge = Instance.new("TextLabel")
+		badge.Size = UDim2.new(0, 22, 0, 18)
+		badge.Position = UDim2.new(1, -24, 0, 3)
+		badge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+		badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+		badge.TextSize = 10; badge.Font = Enum.Font.GothamBold
+		badge.Visible = false
+		badge.Parent = btn
+		corner(badge, 4)
+
+		cardButtons[unit.UUID] = {
+			btn = btn,
+			stroke = btnStroke,
+			badge = badge,
+			classColor = classColor,
+		}
 
 		btn.MouseButton1Click:Connect(function()
-			-- Toggle selection
-			local found = false
-			for i, uuid in ipairs(selectedTeamUUIDs) do
-				if uuid == unit.UUID then
-					table.remove(selectedTeamUUIDs, i)
-					btn.BackgroundColor3 = classColor or Color3.fromRGB(30,34,48)
-					btnStroke.Color = Color3.fromRGB(60,70,90)
-					btnStroke.Thickness = 1
-					found = true; break
+			local existingIndex = table.find(selectedTeamUUIDs, unit.UUID)
+			if existingIndex then
+				-- Remove selection instantly
+				table.remove(selectedTeamUUIDs, existingIndex)
+			else
+				-- Add selection
+				if selectedTeamSize == 1 then
+					-- In 1v1: Immediately selects this unit (replaces any previous selection)
+					selectedTeamUUIDs = { unit.UUID }
+				else
+					-- In 3v3:
+					if #selectedTeamUUIDs < 3 then
+						table.insert(selectedTeamUUIDs, unit.UUID)
+					else
+						-- Already 3 selected: replace the 1st one so user never gets stuck!
+						table.remove(selectedTeamUUIDs, 1)
+						table.insert(selectedTeamUUIDs, unit.UUID)
+					end
 				end
 			end
-			if not found and #selectedTeamUUIDs < selectedTeamSize then
-				table.insert(selectedTeamUUIDs, unit.UUID)
-				btn.BackgroundColor3 = classColor or Color3.fromRGB(40,80,50)
-				btnStroke.Color = Color3.fromRGB(46,204,113)
-				btnStroke.Thickness = 3
-			end
+			updateCardVisuals()
 			refreshTeamSlots()
 		end)
 	end
 
 	teamScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#equippedUnits / 4) * 68 + 10)
+	updateCardVisuals()
 	refreshTeamSlots()
 end
+
+setMode(3) -- Initialize mode and render
 
 -- ═══════════════════════════════════════════════════════
 --  MATCHMAKING QUEUE OVERLAY
@@ -1528,8 +1575,10 @@ battleGui:GetPropertyChangedSignal(changePropName):Connect(function()
 		hideAllPanels()
 		renderTeamSelect()
 		teamPanel.Visible = true
-		startBattleBtn.Text = "⚔️ START BATTLE"
+		startBattleBtn.Text = "⚔️ FIND MATCH"
 		startBattleBtn.BackgroundColor3 = Color3.fromRGB(46,204,113)
+		startBotBtn.Text = "🤖 VS BOT"
+		startBotBtn.BackgroundColor3 = Color3.fromRGB(231,76,60)
 	else
 		stopBattleBGM()
 	end
