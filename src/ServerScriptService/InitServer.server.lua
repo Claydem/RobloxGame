@@ -42,7 +42,7 @@ for _, evName in ipairs(remoteEventsList) do
 end
 
 local remoteFunctionsList = {
-	"StartBattle", "OpenCase", "BuyItem"
+	"StartBattle", "OpenCase", "BuyItem", "GetPlayerData"
 }
 for _, fnName in ipairs(remoteFunctionsList) do
 	if not eventsFolder:FindFirstChild(fnName) then

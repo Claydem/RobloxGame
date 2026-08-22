@@ -134,6 +134,7 @@ local feedGui = Instance.new("ScreenGui")
 feedGui.Name = "FeedUIPopup"
 feedGui.ResetOnSpawn = false
 feedGui.Enabled = false
+feedGui.DisplayOrder = 100
 feedGui.Parent = PlayerGui
 
 local bg = Instance.new("Frame")
@@ -267,12 +268,14 @@ local function openFeedMenu(unitUUID)
 		end
 	end
 	
+	print("[FeedAndBoostsUI] Opening Feed UI Popup!")
 	feedGui.Enabled = true
 end
 
 if FeedUIEvent then
 	FeedUIEvent.OnClientEvent:Connect(openFeedMenu)
 end
+print("[FeedAndBoostsUI] Assigned _G.OpenFeedUI")
 _G.OpenFeedUI = openFeedMenu
 
 -- ══════════════════════════════════════════════════════════
@@ -325,7 +328,10 @@ if PetFedEffect then
 			local playerPets = careZone:FindFirstChild("PlayerPets_" .. tostring(userId))
 			if playerPets then
 				for _, m in ipairs(playerPets:GetChildren()) do
-					spawnHeartsOverModel(m)
+					if m:GetAttribute("UUID") == unitUUID then
+						spawnHeartsOverModel(m)
+						break
+					end
 				end
 			end
 		end
@@ -352,6 +358,7 @@ robuxBtn.Parent = screenGui
 local robuxGui = feedGui:Clone()
 robuxGui.Name = "RobuxShopPopup"
 robuxGui.Enabled = false
+robuxGui.DisplayOrder = 101
 robuxGui.Parent = PlayerGui
 
 local rBg = robuxGui.Frame

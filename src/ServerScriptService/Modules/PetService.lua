@@ -159,6 +159,7 @@ function PetService.UpdatePlayerPetModels(player: Player)
 				if not existingModel or not existingModel.Parent then
 					-- Спавнимо нову 3D модель
 					existingModel = ModelLoader.LoadUnitModel(unit.ItemId)
+					existingModel:SetAttribute("UUID", unit.UUID)
 					existingModel.Parent = playerPetFolder
 					spawnedPetModels[player][unit.UUID] = existingModel
 					print(string.format("[CareZone Verification] 🏡 Spawning Pet for Item: '%s' | Model: '%s'", tostring(unit.ItemId), tostring(existingModel.Name)))
@@ -312,7 +313,7 @@ feedPetEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string, fo
 	end
 
 	if not targetUnit then return end
-	if targetUnit.Hunger >= 100 and foodId == "basic_food" then return end
+	-- if targetUnit.Hunger >= 100 and foodId == "basic_food" then return end
 
 	local itemConfig = ItemDatabase.GetShopItem(foodId)
 	if not itemConfig then return end
@@ -330,8 +331,7 @@ feedPetEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string, fo
 	
 	-- Apply buff if it has one
 	if itemConfig.BuffType then
-		if petFedEffect then petFedEffect:FireAllClients(player.UserId, targetUnit.UUID) end
-	targetUnit.ActiveBuff = {
+		targetUnit.ActiveBuff = {
 			Type = itemConfig.BuffType,
 			ExpireTimestamp = os.time() + (itemConfig.BuffDuration or 1800)
 		}
