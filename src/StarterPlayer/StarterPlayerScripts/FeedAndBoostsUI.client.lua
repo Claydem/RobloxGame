@@ -187,6 +187,15 @@ local currentTargetUUID = nil
 local function openFeedMenu(unitUUID)
 	currentTargetUUID = unitUUID
 	
+	-- Refresh consumables from server just in case
+	local GetPlayerDataFunc = Events:FindFirstChild("GetPlayerData")
+	if GetPlayerDataFunc and GetPlayerDataFunc:IsA("RemoteFunction") then
+		local ok, data = pcall(function() return GetPlayerDataFunc:InvokeServer() end)
+		if ok and data and data.Consumables then
+			currentConsumables = data.Consumables
+		end
+	end
+	
 	-- Check available foods in inventory
 	local ownedFoods = {}
 	for id, cfg in pairs(ItemDatabase.ShopItems) do
@@ -327,10 +336,18 @@ if PetFedEffect then
 		if careZone then
 			local playerPets = careZone:FindFirstChild("PlayerPets_" .. tostring(userId))
 			if playerPets then
+				local found = false
 				for _, m in ipairs(playerPets:GetChildren()) do
 					if m:GetAttribute("UUID") == unitUUID then
 						spawnHeartsOverModel(m)
+						found = true
 						break
+					end
+				end
+				if not found then
+					-- Fallback: spawn on all models if UUID wasn't matched
+					for _, m in ipairs(playerPets:GetChildren()) do
+						spawnHeartsOverModel(m)
 					end
 				end
 			end

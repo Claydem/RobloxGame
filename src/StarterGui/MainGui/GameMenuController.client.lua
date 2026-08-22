@@ -599,6 +599,7 @@ task.spawn(function()
 		for _, c in ipairs(inspectionPanel:GetChildren()) do
 			if c:IsA("GuiObject") then c:Destroy() end
 		end
+		inspectionPanel:SetAttribute("CurrentUnitUUID", unit.UUID)
 		inspectionPanel.Visible = true
 
 		local rarityColor = stats.RarityConfig and stats.RarityConfig.Color or Color3.fromRGB(180, 180, 180)
@@ -1280,11 +1281,35 @@ task.spawn(function()
 	if InventoryUpdate then
 		InventoryUpdate.OnClientEvent:Connect(function(inv)
 			currentInventory = inv or currentInventory or {}
-			closeInspectionPanel()
+			
+			-- Re-render inspection panel if it's open, rather than closing it
+			local inspectUUID = nil
+			if inspectionPanel and inspectionPanel.Visible then
+				inspectUUID = inspectionPanel:GetAttribute("CurrentUnitUUID")
+			end
+			
 			if isBusy then
 				pendingInventory = currentInventory
 			else
 				renderInventory(currentInventory)
+				
+				-- Restore inspection panel for the same unit
+				if inspectUUID then
+					for _, unit in ipairs(currentInventory) do
+						if unit.UUID == inspectUUID then
+							local itemDB = ItemDatabase or require(ModulesFolder.ItemDatabase)
+							local stats = itemDB.GetUnitStats and itemDB.GetUnitStats(unit) or itemDB.GetItem(unit.ItemId)
+							
+							local activeCount = 0
+							for _, u in ipairs(currentInventory) do
+								if u.Equipped then activeCount = activeCount + 1 end
+							end
+							
+							showInspectionPanel(unit, stats, activeCount, 12)
+							break
+						end
+					end
+				end
 			end
 		end)
 	end

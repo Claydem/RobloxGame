@@ -167,6 +167,7 @@ function PetService.UpdatePlayerPetModels(player: Player)
 
 				local pad = pads[padIndex] or pads[#pads] or careZone
 				if pad and existingModel then
+					existingModel:SetAttribute("UUID", unit.UUID)
 					-- Розрахунок точної висоти над платформою
 					local _, bboxSize = existingModel:GetBoundingBox()
 					local elev = math.clamp(bboxSize.Y / 2, 1, 6) + 0.25

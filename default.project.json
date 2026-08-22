@@ -27,6 +27,13 @@
         "$className": "ScreenGui",
         "$path": "src/StarterGui/BattleGui"
       }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      }
     }
   }
 }
