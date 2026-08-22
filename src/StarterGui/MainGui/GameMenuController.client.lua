@@ -1012,43 +1012,24 @@ task.spawn(function()
 
 			local count = currentConsumables[itemId] or 0
 
+			title.Text = string.format("%s %s  (Owned: %d)", itemConfig.Icon or "🥫", itemConfig.Name, count)
+			desc.Size = UDim2.new(1, -160, 0, 32)
+
 			local btnBuy = Instance.new("TextButton")
-			btnBuy.Size = UDim2.new(0, 110, 0, 28)
-			btnBuy.Position = UDim2.new(1, -240, 0.5, -14)
+			btnBuy.Size = UDim2.new(0, 135, 0, 34)
+			btnBuy.Position = UDim2.new(1, -145, 0.5, -17)
 			btnBuy.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-			btnBuy.Text = string.format("Buy (%d🧠)", itemConfig.Price)
+			btnBuy.Text = string.format("🛒 Buy (%d🧠)", itemConfig.Price)
 			btnBuy.TextColor3 = Color3.fromRGB(255, 255, 255)
-			btnBuy.TextSize = 11
+			btnBuy.TextSize = 12
 			btnBuy.Font = Enum.Font.GothamBold
 			btnBuy.Parent = card
-			createCorner(btnBuy, 6)
-
-			local btnUse = Instance.new("TextButton")
-			btnUse.Size = UDim2.new(0, 110, 0, 28)
-			btnUse.Position = UDim2.new(1, -120, 0.5, -14)
-			btnUse.BackgroundColor3 = count > 0 and Color3.fromRGB(52, 152, 219) or Color3.fromRGB(80, 80, 90)
-			btnUse.Text = string.format("Use (%d)", count)
-			btnUse.TextColor3 = Color3.fromRGB(255, 255, 255)
-			btnUse.TextSize = 11
-			btnUse.Font = Enum.Font.GothamBold
-			btnUse.Parent = card
-			createCorner(btnUse, 6)
+			createCorner(btnBuy, 8)
 
 			btnBuy.MouseButton1Click:Connect(function()
 				if isBusy or not BuyShopItemFunc then return end
 				isBusy = true
 				pcall(function() BuyShopItemFunc:InvokeServer(itemId) end)
-				isBusy = false
-			end)
-
-			btnUse.MouseButton1Click:Connect(function()
-				if isBusy or count <= 0 or not UseShopItemFunc then return end
-				isBusy = true
-				local targetUUID = selectedPetForFeedUUID
-				if not targetUUID and #currentInventory > 0 then
-					targetUUID = currentInventory[1].UUID
-				end
-				pcall(function() UseShopItemFunc:InvokeServer(itemId, targetUUID) end)
 				isBusy = false
 			end)
 		end

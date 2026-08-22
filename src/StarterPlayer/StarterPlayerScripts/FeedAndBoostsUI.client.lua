@@ -16,16 +16,30 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
-local Events = ReplicatedStorage:WaitForChild("Events")
-local FeedUIEvent = Events:FindFirstChild("PromptFeedUI")
-local FeedPetEvent = Events:FindFirstChild("FeedPet")
-local BoostStateUpdate = Events:FindFirstChild("BoostStateUpdate")
-local ConsumablesUpdate = Events:FindFirstChild("ConsumablesUpdate")
-local PetFedEffect = Events:FindFirstChild("PetFedEffect")
+local Events = ReplicatedStorage:WaitForChild("Events", 10) or ReplicatedStorage:FindFirstChild("Events")
+local FeedUIEvent = Events:WaitForChild("PromptFeedUI", 5) :: RemoteEvent
+local FeedPetEvent = Events:WaitForChild("FeedPet", 5) :: RemoteEvent
+local BoostStateUpdate = Events:WaitForChild("BoostStateUpdate", 5) :: RemoteEvent
+local ConsumablesUpdate = Events:WaitForChild("ConsumablesUpdate", 5) :: RemoteEvent
+local PetFedEffect = Events:WaitForChild("PetFedEffect", 5) :: RemoteEvent
 
 local ItemDatabase = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemDatabase"))
 
 local currentConsumables = {}
+local currentBoosts = nil
+
+-- Fetch initial player data so food counts and boosts are ready immediately
+task.spawn(function()
+	local GetPlayerDataFunc = Events:WaitForChild("GetPlayerData", 5)
+	if GetPlayerDataFunc and GetPlayerDataFunc:IsA("RemoteFunction") then
+		local ok, data = pcall(function() return GetPlayerDataFunc:InvokeServer() end)
+		if ok and data then
+			if data.Consumables then currentConsumables = data.Consumables end
+			if data.Boosts then currentBoosts = data.Boosts end
+		end
+	end
+end)
+
 if ConsumablesUpdate then
 	ConsumablesUpdate.OnClientEvent:Connect(function(c)
 		currentConsumables = c or {}
@@ -80,7 +94,6 @@ coinsStroke.Color = Color3.fromRGB(255, 230, 100)
 coinsStroke.Thickness = 1.5
 coinsLbl.Parent = boostContainer
 
-local currentBoosts = nil
 if BoostStateUpdate then
 	BoostStateUpdate.OnClientEvent:Connect(function(boosts)
 		currentBoosts = boosts
@@ -199,9 +212,9 @@ local function openFeedMenu(unitUUID)
 	
 	if #ownedFoods == 0 then
 		local noFoodLbl = Instance.new("TextLabel")
-		noFoodLbl.Size = UDim2.new(1, -10, 0, 100)
+		noFoodLbl.Size = UDim2.new(1, -10, 0, 120)
 		noFoodLbl.BackgroundTransparency = 1
-		noFoodLbl.Text = "🚫 You don't have any food!\nBuy food in the Shop (🥫 Basic Food, 🥩 Power Meat, 🧀 Shield Cheese, 🍯 Speed Honey)."
+		noFoodLbl.Text = "🚫 You don't have any food in inventory!\n\nBuy food in the Shop (🥫 Basic Food, 🥩 Power Meat, 🧀 Shield Cheese, 🍯 Speed Honey)."
 		noFoodLbl.TextColor3 = Color3.fromRGB(231, 76, 60)
 		noFoodLbl.Font = Enum.Font.GothamBold
 		noFoodLbl.TextSize = 13
@@ -288,10 +301,10 @@ local function spawnHeartsOverModel(petModel)
 			
 			local tweenInfo = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 			local tween = TweenService:Create(heartBB, tweenInfo, {
-				StudsOffset = heartBB.StudsOffset + Vector3.new(0, 3, 0)
+				StudsOffset = heartBB.StudsOffset + Vector3.new(0, 3.5, 0)
 			})
 			local textTween = TweenService:Create(heartLbl, tweenInfo, {
-				TextSize = 28,
+				TextSize = 30,
 				TextTransparency = 1
 			})
 			tween:Play()

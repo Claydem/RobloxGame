@@ -30,7 +30,8 @@ local remoteEventsList = {
 	"QTEResult", "BattlePhaseUpdate", "BattleStateUpdate",
 	"FeedPet", "ToggleEquipPet", "InventoryUpdate", "CurrencyUpdate",
 	"RosterUpdate", "RosterError", "SelectZone", "SubmitBattleTurn",
-	"JoinMatchmakingQueue", "LeaveMatchmakingQueue", "MatchmakingStatus"
+	"JoinMatchmakingQueue", "LeaveMatchmakingQueue", "MatchmakingStatus",
+	"PromptFeedUI", "PetFedEffect", "BoostStateUpdate", "PromptPurchase", "ConsumablesUpdate"
 }
 for _, evName in ipairs(remoteEventsList) do
 	if not eventsFolder:FindFirstChild(evName) then

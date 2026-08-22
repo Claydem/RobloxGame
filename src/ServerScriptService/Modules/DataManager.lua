@@ -93,6 +93,8 @@ local function setupRemotes()
 	getOrMakeRemote("RosterUpdate", "RemoteEvent")
 	getOrMakeRemote("BoostStateUpdate", "RemoteEvent")
 	getOrMakeRemote("PromptPurchase", "RemoteEvent")
+	getOrMakeRemote("PromptFeedUI", "RemoteEvent")
+	getOrMakeRemote("PetFedEffect", "RemoteEvent")
 end
 
 setupRemotes()

@@ -82,13 +82,11 @@ local function cleanStr(s)
 	return string.lower(string.gsub(tostring(s or ""), "[%s_%-%W]", ""))
 end
 
--- Перевіряємо чи модель є "листовою" (не містить інших системних чи вкладених Model всередині)
-local function isLeafModel(m: Instance)
+-- Перевіряємо чи модель є валідним кандидатом на пета
+local function isPetModelCandidate(m: Instance)
 	if not m:IsA("Model") then return false end
-	for _, child in ipairs(m:GetChildren()) do
-		if child:IsA("Model") then
-			return false
-		end
+	if m.Name == "Models" or m.Name == "MainGui" or m.Name == "Hub" or m.Name == "PetCareZone" or m.Name == "BattleGui" then
+		return false
 	end
 	return true
 end
@@ -97,17 +95,33 @@ local function findCustomModel(itemId, itemName)
 	local targetIdClean = cleanStr(itemId)
 	local targetNameClean = cleanStr(itemName)
 
-	local searchContainers = { ReplicatedStorage:FindFirstChild("Models"), ReplicatedStorage }
+	local modelsFolder = ReplicatedStorage:FindFirstChild("Models")
+	local searchContainers = { modelsFolder, ReplicatedStorage }
 
-	-- 1. Перший прохід: Точний збіг за назвою (ТІЛЬКИ по окремих листових моделях)
+	-- 1. Перший прохід: Прямі діти ReplicatedStorage.Models
+	if modelsFolder then
+		for _, child in ipairs(modelsFolder:GetChildren()) do
+			if child:IsA("Model") then
+				local descClean = cleanStr(child.Name)
+				if (targetIdClean ~= "" and descClean == targetIdClean) or (targetNameClean ~= "" and descClean == targetNameClean) then
+					local clone = child:Clone()
+					clone.Name = child.Name
+					print("[ModelLoader] 🎯 Знайдено пряму 3D модель у Models:", child.Name, "для", itemName or itemId)
+					return clone
+				end
+			end
+		end
+	end
+
+	-- 2. Другий прохід: Точний збіг по всіх нащадках
 	for _, container in ipairs(searchContainers) do
 		if not container then continue end
 		for _, desc in ipairs(container:GetDescendants()) do
-			if isLeafModel(desc) then
+			if isPetModelCandidate(desc) then
 				local descClean = cleanStr(desc.Name)
 				if (targetIdClean ~= "" and descClean == targetIdClean) or (targetNameClean ~= "" and descClean == targetNameClean) then
 					local clone = desc:Clone()
-					clone.Name = desc.Name -- Зберігаємо справжню оригінальну назву 3D моделі!
+					clone.Name = desc.Name
 					print("[ModelLoader] 🎯 Знайдено точну 3D модель:", desc.Name, "для", itemName or itemId)
 					return clone
 				end
@@ -115,18 +129,16 @@ local function findCustomModel(itemId, itemName)
 		end
 	end
 
-	-- 2. Другий прохід: Частковий збіг (без переплутування Gold / Rainbow / Lava варіантів)
+	-- 3. Третій прохід: Частковий збіг (без переплутування Gold / Lava варіантів)
 	for _, container in ipairs(searchContainers) do
 		if not container then continue end
 		for _, desc in ipairs(container:GetDescendants()) do
-			if isLeafModel(desc) then
+			if isPetModelCandidate(desc) then
 				local descClean = cleanStr(desc.Name)
-				-- Перевіряємо чи відрізняються префікси (золотий/лава/тощо)
 				local isGoldVariant = string.find(descClean, "gold", 1, true) or string.find(descClean, "lava", 1, true)
 				local isTargetVariant = string.find(targetIdClean, "gold", 1, true) or string.find(targetNameClean, "gold", 1, true) or
 				                        string.find(targetIdClean, "lava", 1, true) or string.find(targetNameClean, "lava", 1, true)
 
-				-- Частковий збіг дозволений ТІЛЬКИ якщо обидва є варіантами або обидва НЕ є варіантами!
 				if (isGoldVariant and isTargetVariant) or (not isGoldVariant and not isTargetVariant) then
 					if (string.len(targetIdClean) > 3 and string.find(descClean, targetIdClean, 1, true)) or
 					   (string.len(targetNameClean) > 3 and string.find(descClean, targetNameClean, 1, true)) then
