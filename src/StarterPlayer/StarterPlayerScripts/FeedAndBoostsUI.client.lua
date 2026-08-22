@@ -288,8 +288,35 @@ print("[FeedAndBoostsUI] Assigned _G.OpenFeedUI")
 _G.OpenFeedUI = openFeedMenu
 
 -- ══════════════════════════════════════════════════════════
--- 3. ❤️ HEART ANIMATION EFFECT OVER PET
+-- 3. ❤️ HEART ANIMATION & CUTE PET SFX
 -- ══════════════════════════════════════════════════════════
+local function playCutePetSound(petModel)
+	task.spawn(function()
+		local sound = Instance.new("Sound")
+		sound.Name = "PetPurrSFX"
+		-- Cute happy purr / chirp / pet chime
+		sound.SoundId = "rbxassetid://9069609200"
+		sound.Volume = 0.65
+		sound.PlaybackSpeed = 1.05 + (math.random(-5, 5) / 100)
+		
+		local prim = petModel and (petModel.PrimaryPart or petModel:FindFirstChildOfClass("BasePart"))
+		if prim then
+			sound.RollOffMaxDistance = 60
+			sound.RollOffMinDistance = 5
+			sound.Parent = prim
+		else
+			sound.Parent = game:GetService("SoundService")
+		end
+		
+		sound:Play()
+		task.delay(2.5, function()
+			if sound and sound.Parent then
+				sound:Destroy()
+			end
+		end)
+	end)
+end
+
 local function spawnHeartsOverModel(petModel)
 	if not petModel then return end
 	local prim = petModel.PrimaryPart or petModel:FindFirstChildOfClass("BasePart")
@@ -340,6 +367,7 @@ if PetFedEffect then
 				for _, m in ipairs(playerPets:GetChildren()) do
 					if m:GetAttribute("UUID") == unitUUID then
 						spawnHeartsOverModel(m)
+						playCutePetSound(m)
 						found = true
 						break
 					end
@@ -349,8 +377,13 @@ if PetFedEffect then
 					for _, m in ipairs(playerPets:GetChildren()) do
 						spawnHeartsOverModel(m)
 					end
+					playCutePetSound(nil)
 				end
+			else
+				playCutePetSound(nil)
 			end
+		else
+			playCutePetSound(nil)
 		end
 	end)
 end

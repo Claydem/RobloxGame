@@ -662,8 +662,8 @@ task.spawn(function()
 
 		-- 3D Viewport for Pet Model
 		local viewportFrame = Instance.new("ViewportFrame")
-		viewportFrame.Size = UDim2.new(1, -16, 0, 130)
-		viewportFrame.Position = UDim2.new(0, 8, 0, 64)
+		viewportFrame.Size = UDim2.new(1, -16, 0, 95)
+		viewportFrame.Position = UDim2.new(0, 8, 0, 50)
 		viewportFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
 		viewportFrame.ZIndex = 11
 		viewportFrame.Parent = inspectionPanel
@@ -701,8 +701,8 @@ task.spawn(function()
 
 		-- Stats grid
 		local statsFrame = Instance.new("Frame")
-		statsFrame.Size = UDim2.new(1, -16, 0, 60)
-		statsFrame.Position = UDim2.new(0, 8, 0, 202)
+		statsFrame.Size = UDim2.new(1, -16, 0, 52)
+		statsFrame.Position = UDim2.new(0, 8, 0, 148)
 		statsFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
 		statsFrame.ZIndex = 11
 		statsFrame.Parent = inspectionPanel
@@ -718,8 +718,8 @@ task.spawn(function()
 			local col = (i - 1) % 2
 			local row = math.floor((i - 1) / 2)
 			local statBlock = Instance.new("Frame")
-			statBlock.Size = UDim2.new(0.5, -8, 0, 26)
-			statBlock.Position = UDim2.new(col * 0.5, col == 0 and 6 or 2, 0, 6 + row * 28)
+			statBlock.Size = UDim2.new(0.5, -8, 0, 22)
+			statBlock.Position = UDim2.new(col * 0.5, col == 0 and 6 or 2, 0, 4 + row * 24)
 			statBlock.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
 			statBlock.ZIndex = 12
 			statBlock.Parent = statsFrame
@@ -730,7 +730,7 @@ task.spawn(function()
 			statText.BackgroundTransparency = 1
 			statText.Text = sd.icon .. " " .. sd.label .. ": " .. sd.value
 			statText.TextColor3 = Color3.fromRGB(220, 225, 240)
-			statText.TextSize = 11
+			statText.TextSize = 10
 			statText.Font = Enum.Font.GothamBold
 			statText.ZIndex = 13
 			statText.Parent = statBlock
@@ -738,12 +738,12 @@ task.spawn(function()
 
 		-- Class ability description
 		local perkFrame = Instance.new("Frame")
-		perkFrame.Size = UDim2.new(1, -16, 0, 40)
-		perkFrame.Position = UDim2.new(0, 8, 0, 270)
+		perkFrame.Size = UDim2.new(1, -16, 0, 32)
+		perkFrame.Position = UDim2.new(0, 8, 0, 203)
 		perkFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
 		perkFrame.ZIndex = 11
 		perkFrame.Parent = inspectionPanel
-		createCorner(perkFrame, 10)
+		createCorner(perkFrame, 8)
 		createStroke(perkFrame, classColor, 1)
 
 		local perkText = Instance.new("TextLabel")
@@ -759,10 +759,78 @@ task.spawn(function()
 		perkText.ZIndex = 12
 		perkText.Parent = perkFrame
 
+		-- Food Buff Frame
+		local buffFrame = Instance.new("Frame")
+		buffFrame.Size = UDim2.new(1, -16, 0, 32)
+		buffFrame.Position = UDim2.new(0, 8, 0, 238)
+		buffFrame.ZIndex = 11
+		buffFrame.Parent = inspectionPanel
+		createCorner(buffFrame, 8)
+		
+		local buffStroke = createStroke(buffFrame, Color3.fromRGB(50, 55, 75), 1)
+
+		local buffText = Instance.new("TextLabel")
+		buffText.Size = UDim2.new(1, -12, 1, 0)
+		buffText.Position = UDim2.new(0, 6, 0, 0)
+		buffText.BackgroundTransparency = 1
+		buffText.TextSize = 10
+		buffText.Font = Enum.Font.GothamMedium
+		buffText.TextWrapped = true
+		buffText.TextXAlignment = Enum.TextXAlignment.Left
+		buffText.ZIndex = 12
+		buffText.Parent = buffFrame
+
+		local function updateBuffDisplay()
+			local now = os.time()
+			if unit.ActiveBuff and unit.ActiveBuff.ExpireTimestamp and unit.ActiveBuff.ExpireTimestamp > now then
+				local left = unit.ActiveBuff.ExpireTimestamp - now
+				local m = math.floor(left / 60)
+				local s = left % 60
+				local bType = unit.ActiveBuff.Type
+				
+				if bType == "PowerMeat" then
+					buffText.Text = string.format("🥩 Power Meat: +25%% DMG in Battle (%d:%02d left)", m, s)
+					buffText.TextColor3 = Color3.fromRGB(255, 120, 80)
+					buffFrame.BackgroundColor3 = Color3.fromRGB(38, 24, 24)
+					buffStroke.Color = Color3.fromRGB(231, 76, 60)
+				elseif bType == "ShieldCheese" then
+					buffText.Text = string.format("🧀 Shield Cheese: +25%% Max HP in Battle (%d:%02d left)", m, s)
+					buffText.TextColor3 = Color3.fromRGB(255, 220, 90)
+					buffFrame.BackgroundColor3 = Color3.fromRGB(36, 34, 20)
+					buffStroke.Color = Color3.fromRGB(241, 196, 15)
+				elseif bType == "SpeedHoney" then
+					buffText.Text = string.format("🍯 Speed Honey: +30%% Speed in Battle (%d:%02d left)", m, s)
+					buffText.TextColor3 = Color3.fromRGB(255, 180, 50)
+					buffFrame.BackgroundColor3 = Color3.fromRGB(36, 30, 20)
+					buffStroke.Color = Color3.fromRGB(230, 126, 34)
+				else
+					buffText.Text = string.format("✨ Active Buff: %s (%d:%02d left)", tostring(bType), m, s)
+					buffText.TextColor3 = Color3.fromRGB(46, 204, 113)
+					buffFrame.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
+					buffStroke.Color = Color3.fromRGB(46, 204, 113)
+				end
+			else
+				buffText.Text = "🍲 Food Buff: None (Feed gourmet food for 30m battle buffs!)"
+				buffText.TextColor3 = Color3.fromRGB(150, 155, 175)
+				buffFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+				buffStroke.Color = Color3.fromRGB(45, 50, 65)
+			end
+		end
+
+		updateBuffDisplay()
+
+		-- Live timer tick for active buff countdown
+		task.spawn(function()
+			while inspectionPanel.Visible and inspectionPanel:GetAttribute("CurrentUnitUUID") == unit.UUID do
+				updateBuffDisplay()
+				task.wait(1)
+			end
+		end)
+
 		-- XP bar
 		local xpTrack = Instance.new("Frame")
-		xpTrack.Size = UDim2.new(1, -16, 0, 22)
-		xpTrack.Position = UDim2.new(0, 8, 0, 318)
+		xpTrack.Size = UDim2.new(1, -16, 0, 18)
+		xpTrack.Position = UDim2.new(0, 8, 0, 273)
 		xpTrack.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
 		xpTrack.ZIndex = 11
 		xpTrack.Parent = inspectionPanel
@@ -793,8 +861,8 @@ task.spawn(function()
 		local btnText = unit.Equipped and "✖ Care Zone" or (canAdd and "🏡 Care Zone" or "🚫 Full")
 
 		local rosterBtn = Instance.new("TextButton")
-		rosterBtn.Size = UDim2.new(0.5, -10, 0, 38)
-		rosterBtn.Position = UDim2.new(0, 8, 0, 348)
+		rosterBtn.Size = UDim2.new(0.5, -10, 0, 36)
+		rosterBtn.Position = UDim2.new(0, 8, 0, 296)
 		rosterBtn.BackgroundColor3 = btnColor
 		rosterBtn.Text = btnText
 		rosterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -806,8 +874,8 @@ task.spawn(function()
 		createCorner(rosterBtn, 10)
 
 		local feedBtn = Instance.new("TextButton")
-		feedBtn.Size = UDim2.new(0.5, -10, 0, 38)
-		feedBtn.Position = UDim2.new(0.5, 2, 0, 348)
+		feedBtn.Size = UDim2.new(0.5, -10, 0, 36)
+		feedBtn.Position = UDim2.new(0.5, 2, 0, 296)
 		feedBtn.BackgroundColor3 = Color3.fromRGB(230, 126, 34)
 		feedBtn.Text = "🍖 Feed"
 		feedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -833,12 +901,12 @@ task.spawn(function()
 
 		-- Active counter label
 		local counterLbl = Instance.new("TextLabel")
-		counterLbl.Size = UDim2.new(1, -16, 0, 20)
-		counterLbl.Position = UDim2.new(0, 8, 0, 390)
+		counterLbl.Size = UDim2.new(1, -16, 0, 18)
+		counterLbl.Position = UDim2.new(0, 8, 0, 336)
 		counterLbl.BackgroundTransparency = 1
 		counterLbl.Text = string.format("🏡 Active: %d / %d", activeCount, maxCount)
 		counterLbl.TextColor3 = activeCount >= maxCount and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(46, 204, 113)
-		counterLbl.TextSize = 12
+		counterLbl.TextSize = 11
 		counterLbl.Font = Enum.Font.GothamBold
 		counterLbl.ZIndex = 11
 		counterLbl.Parent = inspectionPanel
