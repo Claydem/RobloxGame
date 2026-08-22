@@ -35,6 +35,10 @@ local DEFAULT_DATA = {
 		DamageMultiplier = 1.0,
 		DamageBuffEndTime = 0,
 	},
+	Boosts = {
+		ExpBoostExpire = 0,
+		BrainCellsBoostExpire = 0,
+	},
 	Stats = {
 		BotWins = 0,
 		BotLosses = 0,
@@ -87,6 +91,8 @@ local function setupRemotes()
 	getOrMakeRemote("BuffStateUpdate", "RemoteEvent")
 	getOrMakeRemote("RosterError", "RemoteEvent")
 	getOrMakeRemote("RosterUpdate", "RemoteEvent")
+	getOrMakeRemote("BoostStateUpdate", "RemoteEvent")
+	getOrMakeRemote("PromptPurchase", "RemoteEvent")
 end
 
 setupRemotes()
@@ -103,7 +109,13 @@ function DataManager.AddBrainCells(player: Player, amount: number): boolean
 	end
 	if not data then return false end
 
+	
+	local now = os.time()
+	if amount > 0 and data.Boosts and data.Boosts.BrainCellsBoostExpire > now then
+		amount = amount * 2
+	end
 	data.BrainCells = data.BrainCells + amount
+
 	DataManager.UpdateLeaderstats(player)
 	return true
 end
@@ -285,6 +297,9 @@ local function loadData(player: Player)
 		end
 		if not sessionData[player].ActiveBuffs then
 			sessionData[player].ActiveBuffs = deepCopy(DEFAULT_DATA.ActiveBuffs)
+		end
+		if not sessionData[player].Boosts then
+			sessionData[player].Boosts = { ExpBoostExpire = 0, BrainCellsBoostExpire = 0 }
 		end
 		if not sessionData[player].Stats then
 			sessionData[player].Stats = deepCopy(DEFAULT_DATA.Stats)

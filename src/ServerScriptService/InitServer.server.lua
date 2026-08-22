@@ -74,6 +74,10 @@ safeRequire("BattleService")
 safeRequire("ShopService")
 safeRequire("TeleportService")
 safeRequire("PvPDuelService")
+local MonetizationService = safeRequire("MonetizationService")
+if MonetizationService and MonetizationService.Init then
+	MonetizationService.Init()
+end
 
 -- ── DYNAMIC PLAYER BASE ALLOCATION ──
 local playerBaseIndices = {}
@@ -130,3 +134,11 @@ end)
 print("==================================================")
 print("🎉 [ServerInit] Усі сервіси сервера успішно активовано!")
 print("==================================================")
+
+local Events = ReplicatedStorage:WaitForChild("Events")
+local promptPurchaseRemote = Events:WaitForChild("PromptPurchase")
+promptPurchaseRemote.OnServerEvent:Connect(function(player, productId)
+	if MonetizationService and MonetizationService.PromptPurchase then
+		MonetizationService.PromptPurchase(player, productId)
+	end
+end)

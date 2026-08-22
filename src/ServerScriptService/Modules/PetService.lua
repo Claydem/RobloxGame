@@ -176,23 +176,30 @@ function PetService.UpdatePlayerPetModels(player: Player)
 					local rotCF = CFrame.Angles(0, math.rad(unit.Rotation), 0) * natRot.Rotation
 					existingModel:PivotTo(CFrame.new(pad.Position + Vector3.new(0, elev, 0)) * rotCF)
 
-					-- Додавання ProximityPrompt для повертання на 90°
+					-- Додавання ProximityPrompt для годування
 					local prim = existingModel.PrimaryPart or existingModel:FindFirstChildOfClass("BasePart")
-					if prim and not prim:FindFirstChild("RotatePrompt") then
-						local rotPrompt = Instance.new("ProximityPrompt")
-						rotPrompt.Name = "RotatePrompt"
-						rotPrompt.ActionText = "Rotate (90°)"
-						rotPrompt.ObjectText = "🔄 " .. (existingModel.Name or "Brainrot")
-						rotPrompt.MaxActivationDistance = 10
-						rotPrompt.HoldDuration = 0.2
-						rotPrompt.Parent = prim
+					if prim then
+						local oldRot = prim:FindFirstChild("RotatePrompt")
+						if oldRot then oldRot:Destroy() end
+						
+						if not prim:FindFirstChild("FeedPrompt") then
+							local feedPrompt = Instance.new("ProximityPrompt")
+							feedPrompt.Name = "FeedPrompt"
+							feedPrompt.ActionText = "🍖 Feed"
+							feedPrompt.ObjectText = existingModel.Name or "Brainrot"
+							feedPrompt.MaxActivationDistance = 10
+							feedPrompt.HoldDuration = 0.2
+							feedPrompt.Parent = prim
 
-						rotPrompt.Triggered:Connect(function(triggeringPlayer)
-							if triggeringPlayer == player then
-								unit.Rotation = ((unit.Rotation or 0) + 90) % 360
-								PetService.UpdatePlayerPetModels(player)
-							end
-						end)
+							feedPrompt.Triggered:Connect(function(triggeringPlayer)
+								if triggeringPlayer == player then
+									local ev = ReplicatedStorage:FindFirstChild("Events")
+									if ev and ev:FindFirstChild("PromptFeedUI") then
+										ev.PromptFeedUI:FireClient(player, unit.UUID)
+									end
+								end
+							end)
+						end
 					end
 				end
 
@@ -235,7 +242,9 @@ task.spawn(function()
 						local itemConfig = ItemDatabase.GetItem(unit.ItemId)
 						if itemConfig then
 							local baseIncome = itemConfig.IncomeRate or 1
-							if unit.Hunger < 20 then
+							if unit.Hunger == 0 then
+								baseIncome = 0
+							elseif unit.Hunger < 20 then
 								baseIncome = baseIncome * 0.5
 							end
 							totalIncome = totalIncome + (baseIncome * incomeMult)
@@ -282,8 +291,14 @@ local eventsFolder = ReplicatedStorage:WaitForChild("Events")
 local feedPetEvent = eventsFolder:WaitForChild("FeedPet") :: RemoteEvent
 local toggleEquipEvent = eventsFolder:WaitForChild("ToggleEquipPet") :: RemoteEvent
 local inventoryUpdateEvent = eventsFolder:WaitForChild("InventoryUpdate") :: RemoteEvent
+local petFedEffect = eventsFolder:FindFirstChild("PetFedEffect")
+if not petFedEffect then
+	petFedEffect = Instance.new("RemoteEvent")
+	petFedEffect.Name = "PetFedEffect"
+	petFedEffect.Parent = eventsFolder
+end
 
-feedPetEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string)
+feedPetEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string, foodId: string)
 	local DataManager = getDataManager()
 	local data = DataManager.GetPlayerData(player)
 	if not data then return end
@@ -296,13 +311,42 @@ feedPetEvent.OnServerEvent:Connect(function(player: Player, unitUUID: string)
 		end
 	end
 
-	if not targetUnit or targetUnit.Hunger >= 100 then return end
+	if not targetUnit then return end
+	if targetUnit.Hunger >= 100 and foodId == "basic_food" then return end
 
-	local successDeduct = DataManager.AddBrainCells(player, -FEED_COST)
-	if successDeduct then
-		targetUnit.Hunger = 100
-		PetService.UpdatePlayerPetModels(player)
-		inventoryUpdateEvent:FireClient(player, data.Inventory)
+	local itemConfig = ItemDatabase.GetShopItem(foodId)
+	if not itemConfig then return end
+	
+	-- Check if player owns this food in consumables
+	local currentCount = data.Consumables[foodId] or 0
+	if currentCount <= 0 then return end
+	
+	-- Consume food
+	data.Consumables[foodId] = currentCount - 1
+	
+	-- Apply hunger
+	targetUnit.Hunger = math.min(100, targetUnit.Hunger + (itemConfig.HungerRestored or 0))
+	if petFedEffect then petFedEffect:FireAllClients(player.UserId, targetUnit.UUID) end
+	
+	-- Apply buff if it has one
+	if itemConfig.BuffType then
+		if petFedEffect then petFedEffect:FireAllClients(player.UserId, targetUnit.UUID) end
+	targetUnit.ActiveBuff = {
+			Type = itemConfig.BuffType,
+			ExpireTimestamp = os.time() + (itemConfig.BuffDuration or 1800)
+		}
+	end
+
+	PetService.UpdatePlayerPetModels(player)
+	
+	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+	if eventsFolder then
+		if eventsFolder:FindFirstChild("InventoryUpdate") then
+			eventsFolder.InventoryUpdate:FireClient(player, data.Inventory)
+		end
+		if eventsFolder:FindFirstChild("ConsumablesUpdate") then
+			eventsFolder.ConsumablesUpdate:FireClient(player, data.Consumables)
+		end
 	end
 end)
 

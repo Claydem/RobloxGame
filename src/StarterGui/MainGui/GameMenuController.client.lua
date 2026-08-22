@@ -785,24 +785,50 @@ task.spawn(function()
 		xpLabel.ZIndex = 13
 		xpLabel.Parent = xpTrack
 
-		-- Roster button
+		-- Roster & Feed buttons
 		local canAdd = not unit.Equipped and (activeCount < maxCount)
 		local isFull = not unit.Equipped and (activeCount >= maxCount)
 		local btnColor = unit.Equipped and Color3.fromRGB(180, 60, 60) or (canAdd and Color3.fromRGB(46, 160, 80) or Color3.fromRGB(70, 75, 90))
-		local btnText = unit.Equipped and "✖ Remove from Care Zone" or (canAdd and "🏡 Add to Care Zone" or "🚫 Care Zone Full!")
+		local btnText = unit.Equipped and "✖ Care Zone" or (canAdd and "🏡 Care Zone" or "🚫 Full")
 
 		local rosterBtn = Instance.new("TextButton")
-		rosterBtn.Size = UDim2.new(1, -16, 0, 38)
+		rosterBtn.Size = UDim2.new(0.5, -10, 0, 38)
 		rosterBtn.Position = UDim2.new(0, 8, 0, 348)
 		rosterBtn.BackgroundColor3 = btnColor
 		rosterBtn.Text = btnText
 		rosterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		rosterBtn.TextSize = 13
+		rosterBtn.TextSize = 12
 		rosterBtn.Font = Enum.Font.GothamBold
 		rosterBtn.ZIndex = 15
 		rosterBtn.Active = unit.Equipped or canAdd
 		rosterBtn.Parent = inspectionPanel
 		createCorner(rosterBtn, 10)
+
+		local feedBtn = Instance.new("TextButton")
+		feedBtn.Size = UDim2.new(0.5, -10, 0, 38)
+		feedBtn.Position = UDim2.new(0.5, 2, 0, 348)
+		feedBtn.BackgroundColor3 = Color3.fromRGB(230, 126, 34)
+		feedBtn.Text = "🍖 Feed"
+		feedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		feedBtn.TextSize = 13
+		feedBtn.Font = Enum.Font.GothamBold
+		feedBtn.ZIndex = 15
+		feedBtn.Parent = inspectionPanel
+		createCorner(feedBtn, 10)
+
+		feedBtn.MouseButton1Click:Connect(function()
+			if _G.OpenFeedUI then
+				_G.OpenFeedUI(unit.UUID)
+			else
+				local ev = EventsFolder:FindFirstChild("PromptFeedUI")
+				if ev then
+					local feedEv = EventsFolder:FindFirstChild("FeedPet")
+					if feedEv then
+						feedEv:FireServer(unit.UUID, "basic_food")
+					end
+				end
+			end
+		end)
 
 		-- Active counter label
 		local counterLbl = Instance.new("TextLabel")

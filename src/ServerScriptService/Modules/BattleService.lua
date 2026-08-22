@@ -490,6 +490,12 @@ local function runBattle(session)
 			end
 
 			local shareXP = math.floor(totalXPPool / math.max(1, #partUnits))
+			-- Apply 2x EXP Boost if active
+			local now = os.time()
+			local dmData = DM.GetPlayerData(session.Player1)
+			if dmData and dmData.Boosts and dmData.Boosts.ExpBoostExpire > now then
+				shareXP = shareXP * 2
+			end
 			resultData.XPAwarded = shareXP
 			resultData.ParticipatedCount = #partUnits
 
@@ -542,6 +548,12 @@ local function runBattle(session)
 				end
 			end
 			local shareXP = math.floor(totalXPPool / math.max(1, #partUnits))
+			-- Apply 2x EXP Boost if active
+			local now = os.time()
+			local dmData = DM.GetPlayerData(session.Player1)
+			if dmData and dmData.Boosts and dmData.Boosts.ExpBoostExpire > now then
+				shareXP = shareXP * 2
+			end
 			for _, uuid in ipairs(partUnits) do
 				DM.AddXPToUnit(session.Player2, uuid, shareXP)
 			end

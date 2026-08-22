@@ -248,6 +248,49 @@ ItemDatabase.BaseSpecies = {
 -- ═══════════════════════════════════════════════════════
 
 ItemDatabase.ShopItems = {
+	["basic_food"] = {
+		Id = "basic_food",
+		Name = "Basic Food",
+		Price = 10,
+		Type = "Consumable",
+		Description = "Restores +30% hunger level for the selected unit. (Pets need hunger to fight!)",
+		HungerRestored = 30,
+		Icon = "🥫",
+	},
+	["power_meat"] = {
+		Id = "power_meat",
+		Name = "Power Meat",
+		Price = 50,
+		Type = "Consumable",
+		Description = "Restores +40% hunger + Grants +25% Damage in battle for 30 mins!",
+		HungerRestored = 40,
+		BuffType = "PowerMeat",
+		BuffDuration = 1800,
+		Icon = "🥩",
+	},
+	["shield_cheese"] = {
+		Id = "shield_cheese",
+		Name = "Shield Cheese",
+		Price = 50,
+		Type = "Consumable",
+		Description = "Restores +40% hunger + Grants +25% Max HP in battle for 30 mins!",
+		HungerRestored = 40,
+		BuffType = "ShieldCheese",
+		BuffDuration = 1800,
+		Icon = "🧀",
+	},
+	["speed_honey"] = {
+		Id = "speed_honey",
+		Name = "Speed Honey",
+		Price = 50,
+		Type = "Consumable",
+		Description = "Restores +40% hunger + Grants +30% Speed for 30 mins!",
+		HungerRestored = 40,
+		BuffType = "SpeedHoney",
+		BuffDuration = 1800,
+		Icon = "🍯",
+	},
+
 	["regular_food"] = {
 		Id = "regular_food",
 		Name = "Regular Food",
@@ -400,6 +443,19 @@ function ItemDatabase.GetUnitStats(unitData: any)
 	local maxHP = math.max(10, math.floor(baseCfg.MaxHP * hpMult * (1 + levelStatBonus)))
 	local damage = math.max(1, math.floor(baseCfg.Damage * dmgMult * (1 + levelStatBonus)))
 	local incomeRate = math.max(1, math.floor(baseCfg.IncomeRate * gpsMult * (1 + levelGpsBonus)))
+
+	-- Apply Food Buffs
+	local now = os.time()
+	local speedBuff = false
+	if unitData.ActiveBuff and unitData.ActiveBuff.ExpireTimestamp > now then
+		if unitData.ActiveBuff.Type == "PowerMeat" then
+			damage = math.floor(damage * 1.25)
+		elseif unitData.ActiveBuff.Type == "ShieldCheese" then
+			maxHP = math.floor(maxHP * 1.25)
+		elseif unitData.ActiveBuff.Type == "SpeedHoney" then
+			speedBuff = true
+		end
+	end
 	local maxXP = ItemDatabase.GetXPRequired(level)
 
 	-- Build display name with class prefix
@@ -424,6 +480,7 @@ function ItemDatabase.GetUnitStats(unitData: any)
 		IncomeRate = incomeRate,
 		Description = baseCfg.Description,
 		Color = classCfg.Color or baseCfg.Color,
+		SpeedBuff = speedBuff,
 	}
 end
 
